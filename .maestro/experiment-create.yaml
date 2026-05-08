@@ -1,0 +1,34 @@
+# Maestro E2E flow — Experiment creation + verdict (file 35 — v1.1).
+#
+# Mock user has 4 weeks of stable history. Drives the user through
+# experiment setup, daily compliance log, and the verdict reveal once
+# the window closes (the mock advances simulated time forward).
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_AR: "true"
+      USE_MOCK_USER: "true_with_history"
+      MOCK_DATE: "2026-04-01"
+
+- tapOn: "Experiments"
+- assertVisible: "Run a small test"
+- tapOn: "Start an experiment"
+
+- assertVisible: "Pick what to test"
+- tapOn: "Add a product"
+- inputText: "Adding niacinamide serum AM"
+- tapOn: "Next"
+
+- assertVisible: "How long"
+- tapOn: "4 weeks"
+- tapOn: "Save"
+
+- assertVisible: "Your experiment is live"
+
+# Compliance day 1
+- tapOn: "Done today"
+- assertVisible: "Logged"
+
+- assertVisible: "Verdict"
+  timeout: 60000

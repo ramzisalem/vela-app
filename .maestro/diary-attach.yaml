@@ -1,0 +1,28 @@
+# Maestro E2E flow — Diary attach to scan (file 33 — v1.1).
+#
+# Confirms the post-baseline reveal exposes a "Add a note" button,
+# the diary sheet opens, accepts free-text + tag, and the entry shows up
+# back on the dashboard / history.
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_AR: "true"
+      USE_MOCK_USER: "true_with_history"
+- tapOn: "Take this week's scan"
+- assertVisible: "Captured"
+  timeout: 15000
+- tapOn: "Continue"
+
+- assertVisible: "Your scores"
+  timeout: 30000
+- assertVisible: "Add a note"
+- tapOn: "Add a note"
+
+- assertVisible: "How did this week feel"
+- inputText: "Slept poorly this week, lots of travel."
+- tapOn: "Stressed"
+- tapOn: "Save"
+
+- assertVisible: "Saved to your diary"
+  timeout: 5000

@@ -1,0 +1,25 @@
+# Maestro E2E flow — Day 7 trial forecast (file 41).
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_USER: "true_in_trial_day_7"
+
+- assertVisible: "Your week four, if you stick around."
+  timeout: 10000
+
+# Mandatory PREVIEW watermark
+- assertVisible: "PREVIEW"
+
+# Three swipeable sub-cards
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: RIGHT
+
+- tapOn: "Continue with Vela"
+
+- assertVisible: "Vela Premium"
+  timeout: 10000

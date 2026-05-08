@@ -1,0 +1,48 @@
+{
+  "root": true,
+  "extends": ["expo", "prettier"],
+  "plugins": ["prettier"],
+  "ignorePatterns": ["node_modules", "ios", "android", "dist", "build", "modules/*/build"],
+  "rules": {
+    "prettier/prettier": "warn",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/theme/palette",
+            "message": "Use semantic tokens via useColors() — never import Palette directly outside src/theme/colors.ts."
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@react-native-async-storage/async-storage"],
+            "importNames": ["default"],
+            "message": "Auth tokens go through SecureStorageAdapter (file 03). AsyncStorage is fine for non-sensitive prefs only."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/!/]",
+        "message": "User-facing copy must not contain exclamation marks (file 21 brand voice)."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/theme/colors.ts", "src/theme/palette.ts", "scripts/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "scripts/**", "supabase/**"],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    }
+  ]
+}

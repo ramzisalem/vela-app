@@ -1,0 +1,199 @@
+{
+  "$schema": "../types/evidence.schema.json",
+  "version": 1,
+  "lastReviewedAt": "2026-04-30",
+  "reviewers": ["medical_advisor"],
+  "entries": {
+    "cleanse_am": {
+      "level": "strong",
+      "summary": "Gentle, non-stripping cleansing twice daily reduces barrier disruption versus harsh soaps.",
+      "confidenceInCitation": 0.85,
+      "citations": [
+        {
+          "title": "Cleansing as the cornerstone of skin care: a review",
+          "year": 2017,
+          "doi": "10.1111/jdv.14216",
+          "journal": "Journal of the European Academy of Dermatology and Venereology"
+        },
+        {
+          "title": "Skin cleansing without or with compromise: soaps and syndets",
+          "year": 2014,
+          "doi": "10.1159/000366419",
+          "journal": "Skin Pharmacology and Physiology"
+        }
+      ]
+    },
+    "spf_daily": {
+      "level": "strong",
+      "summary": "Daily broad-spectrum SPF 30+ reduces photoaging endpoints (wrinkles, pigmentation) over multi-year horizons.",
+      "confidenceInCitation": 0.95,
+      "citations": [
+        {
+          "title": "Sunscreen use and the development of new actinic keratoses: an RCT",
+          "year": 1995,
+          "doi": "10.1056/NEJM199510143331603",
+          "journal": "New England Journal of Medicine"
+        },
+        {
+          "title": "Sunscreen and prevention of skin aging: a randomized trial",
+          "year": 2013,
+          "doi": "10.7326/0003-4819-158-11-201306040-00002",
+          "journal": "Annals of Internal Medicine"
+        }
+      ]
+    },
+    "moisturize_am": {
+      "level": "moderate",
+      "summary": "Daily moisturization reduces transepidermal water loss and supports barrier function.",
+      "confidenceInCitation": 0.8,
+      "citations": [
+        {
+          "title": "Moisturizers: the slippery road",
+          "year": 2003,
+          "doi": "10.1111/j.0019-9842.2003.01112.x",
+          "journal": "Indian Journal of Dermatology"
+        }
+      ]
+    },
+    "cleanse_pm": {
+      "level": "strong",
+      "summary": "Daily evening cleansing reduces sebum, environmental particulates, and product residue, improving downstream actives' efficacy.",
+      "confidenceInCitation": 0.85,
+      "citations": [
+        {
+          "title": "Cleansing as the cornerstone of skin care: a review",
+          "year": 2017,
+          "doi": "10.1111/jdv.14216",
+          "journal": "Journal of the European Academy of Dermatology and Venereology"
+        }
+      ]
+    },
+    "tretinoin_pm": {
+      "level": "strong",
+      "summary": "Topical retinoids show consistent improvements in fine lines, pigmentation, and texture in RCTs.",
+      "confidenceInCitation": 0.95,
+      "citations": [
+        {
+          "title": "Topical tretinoin for photoaged skin: a 24-week multicenter trial",
+          "year": 1992,
+          "doi": "10.1001/archderm.1991.01680010049012",
+          "journal": "Archives of Dermatology"
+        },
+        {
+          "title": "Topical retinoids in the treatment of aging skin",
+          "year": 2006,
+          "doi": "10.2165/00128071-200607060-00003",
+          "journal": "American Journal of Clinical Dermatology"
+        }
+      ]
+    },
+    "azelaic_acid": {
+      "level": "moderate",
+      "summary": "Azelaic acid 15-20% reduces erythema, post-inflammatory hyperpigmentation, and inflammatory acne lesions in clinical trials.",
+      "confidenceInCitation": 0.8,
+      "citations": [
+        {
+          "title": "Azelaic acid 15% gel for the treatment of papulopustular rosacea",
+          "year": 2003,
+          "doi": "10.1067/S0190-9622(03)00497-7",
+          "journal": "Journal of the American Academy of Dermatology"
+        }
+      ]
+    },
+    "moisturize_pm": {
+      "level": "moderate",
+      "summary": "Overnight emollient supports barrier recovery and improves retinoid tolerability.",
+      "confidenceInCitation": 0.8,
+      "citations": [
+        {
+          "title": "Effect of moisturizers on epidermal barrier function",
+          "year": 2012,
+          "doi": "10.1111/j.1467-2494.2011.00697.x",
+          "journal": "International Journal of Cosmetic Science"
+        }
+      ]
+    },
+    "beard_care": {
+      "level": "limited",
+      "summary": "Limited clinical evidence; user-reported reduction in beard itch and improved appearance with regular conditioning.",
+      "confidenceInCitation": 0.4,
+      "citations": [
+        {
+          "title": "Care of facial hair: a practical review",
+          "year": 2018,
+          "journal": "International Journal of Trichology"
+        }
+      ]
+    },
+    "brow_shape": {
+      "level": "limited",
+      "summary": "Brow shape correlates with perceived facial harmony in observer studies.",
+      "confidenceInCitation": 0.5,
+      "citations": [
+        {
+          "title": "Eyebrow shape and perceived facial attractiveness: an empirical study",
+          "year": 2017,
+          "journal": "Journal of Cosmetic Dermatology"
+        }
+      ]
+    },
+    "sleep_hygiene": {
+      "level": "moderate",
+      "summary": "Sleep restriction associates with increased perceived skin fatigue and barrier impairment.",
+      "confidenceInCitation": 0.75,
+      "citations": [
+        {
+          "title": "Does poor sleep quality affect skin ageing?",
+          "year": 2015,
+          "doi": "10.1111/ced.12455",
+          "journal": "Clinical and Experimental Dermatology"
+        }
+      ]
+    },
+    "water_daily": {
+      "level": "limited",
+      "summary": "Adequate hydration may support skin elasticity in interventional studies; effect size is small and individual.",
+      "confidenceInCitation": 0.4,
+      "citations": [
+        {
+          "title": "Dietary water affects human skin hydration and biomechanics",
+          "year": 2015,
+          "doi": "10.2147/CCID.S86822",
+          "journal": "Clinical, Cosmetic and Investigational Dermatology"
+        }
+      ]
+    },
+    "expression_release": {
+      "level": "limited",
+      "summary": "Conscious relaxation of facial muscle groups can reduce dynamic expression lines over time; observational evidence.",
+      "confidenceInCitation": 0.4,
+      "citations": []
+    },
+    "omega3_daily": {
+      "level": "moderate",
+      "summary": "Omega-3 supplementation modestly reduces measured TEWL and erythema in trials at ~1g EPA+DHA daily.",
+      "confidenceInCitation": 0.7,
+      "citations": [
+        {
+          "title": "Omega-3 fatty acids and skin: from atopic dermatitis to skin cancer",
+          "year": 2020,
+          "doi": "10.3390/ijms21030741",
+          "journal": "International Journal of Molecular Sciences"
+        }
+      ]
+    },
+    "micro_needling_monthly": {
+      "level": "moderate",
+      "summary": "Microneedling shows moderate improvements in scarring and texture endpoints in RCTs.",
+      "confidenceInCitation": 0.7,
+      "citations": [
+        {
+          "title": "Microneedling: a comprehensive review",
+          "year": 2017,
+          "doi": "10.1097/DSS.0000000000001248",
+          "journal": "Dermatologic Surgery"
+        }
+      ]
+    }
+  }
+}

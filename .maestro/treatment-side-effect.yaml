@@ -1,0 +1,29 @@
+# Maestro E2E — Treatment side-effect + doctor export (v1.5, file 34).
+#
+# Use EAS **test** build (`com.velapp.vela.dev`). Set scenario at compile time:
+#   EXPO_PUBLIC_MOCK_USER_SCENARIO=true_with_treatment
+# (see Docs/REVIEW_PHASE_A_INVENTORY.md). launchApp.arguments do not set Expo JS env.
+appId: com.velapp.vela.dev
+---
+- launchApp:
+
+- tapOn: "Treatments"
+- tapOn: "Tretinoin"
+
+- assertVisible: "Common side effects"
+- tapOn: "Log a side effect"
+
+- assertVisible: "Pick the closest match"
+- tapOn: "Dryness"
+- tapOn: "3"
+- inputText: "Most evident around the nose."
+- tapOn: "Log it"
+
+- assertVisible: "Your log"
+- assertVisible: "Dryness"
+
+- tapOn: "Doctor export"
+- assertVisible: "Generating"
+  timeout: 5000
+- assertVisible: "Export ready"
+  timeout: 20000

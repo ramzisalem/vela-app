@@ -1,0 +1,77 @@
+{
+  "expo": {
+    "name": "Vela",
+    "slug": "vela",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "vela",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAF8"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.velapp.vela",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Vela uses your camera to capture weekly face scans using AR alignment. Photos are stored only on your device.",
+        "NSFaceIDUsageDescription": "Vela uses Face ID hardware for precise face alignment measurements.",
+        "NSPhotoLibraryAddUsageDescription": "Vela saves your comparison photos to your camera roll when you choose to share them.",
+        "NSHealthShareUsageDescription": "Vela reads sleep, heart rate variability, and cycle data from Apple Health to surface gentle correlations with your face metrics. Raw values stay on your device.",
+        "NSMicrophoneUsageDescription": "Vela uses your microphone for on-device voice journaling. Audio never leaves your device.",
+        "NSSpeechRecognitionUsageDescription": "Vela transcribes your diary entries on-device. Speech is processed locally.",
+        "NSUserTrackingUsageDescription": "Allow tracking to help us understand which marketing channels bring people who genuinely benefit from Vela. Declining still gives you full access.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.velapp.vela",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAFAF8"
+      },
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#5B8DB8"
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "Allow tracking to help us understand which marketing channels bring people who genuinely benefit from Vela. Declining still gives you full access."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "REPLACE_WITH_YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

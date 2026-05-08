@@ -1,0 +1,27 @@
+# Maestro E2E flow — Cancel-save sheet + exit interview (file 47).
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_USER: "true_engaged_paid_4mo"
+      USE_MOCK_PURCHASES: "true"
+
+- tapOn:
+    id: "tab-settings"
+
+- assertVisible: "Subscription"
+- tapOn: "Subscription"
+
+- assertVisible: "Cancel subscription"
+- tapOn: "Cancel subscription"
+
+# Save sheet — engaged + 16 weeks → price-match-yearly
+- assertVisible: "Switch to yearly at $79"
+- tapOn: "No thanks"
+
+# Exit interview
+- assertVisible: "One last question"
+- tapOn: "Too expensive"
+- tapOn: "Submit"
+
+- assertVisible: "Thanks for the note"

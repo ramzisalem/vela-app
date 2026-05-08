@@ -1,0 +1,30 @@
+# Maestro E2E flow — Monthly Wrapped reveal (v1.1, file 34).
+#
+# Mock user has at least one full calendar month of scans. The
+# Wrapped-ready card appears in the dashboard's slot 6 and tapping
+# it deep-links into the wrapped composer with all five cards.
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_AR: "true"
+      USE_MOCK_USER: "true_with_one_month"
+      MOCK_DATE: "2026-05-02"
+
+- assertVisible: "Your month, in five cards"
+- tapOn: "Open Wrapped"
+
+- assertVisible: "April, in review"
+  timeout: 10000
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: LEFT
+- swipe:
+    direction: LEFT
+
+- assertVisible: "Share"
+- tapOn: "Share"
+- assertVisible: "Pick a card to share"

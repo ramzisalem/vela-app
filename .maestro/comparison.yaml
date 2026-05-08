@@ -1,0 +1,25 @@
+# Maestro E2E flow — Compare tab three modes (file 11 + 26).
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_USER: "true_with_4_sessions"
+
+- tapOn:
+    id: "tab-compare"
+
+- assertVisible: "Baseline vs Latest"
+- tapOn: "Slider"
+- assertVisible:
+    id: "comparison-slider"
+
+- swipe:
+    from: { x: "30%", y: "50%" }
+    to: { x: "70%", y: "50%" }
+
+- tapOn: "Side by side"
+- assertVisible: "Score change"
+
+- tapOn: "Difference"
+- assertVisible:
+    id: "comparison-diff-canvas"

@@ -1,0 +1,20 @@
+# Maestro E2E flow — Weekly capture (file 04 + 26).
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    arguments:
+      USE_MOCK_AR: "true"
+      USE_MOCK_USER: "true_with_baseline"
+- assertVisible: "Take this week's scan"
+- tapOn: "Take this week's scan"
+
+- assertVisible: "Position your face"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- assertVisible: "Captured"
+  timeout: 15000
+- tapOn: "Continue"
+
+- assertVisible: "Your scores"
+  timeout: 30000

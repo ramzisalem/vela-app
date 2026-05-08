@@ -1,0 +1,94 @@
+project_id = "vela"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+enabled = false
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "vela://"
+additional_redirect_urls = [
+  "vela://reset-password",
+  "vela://delete-account/confirm",
+  "vela://auth/callback",
+]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[auth.external.apple]
+enabled = true
+client_id = "env(APPLE_CLIENT_ID)"
+secret = "env(APPLE_CLIENT_SECRET)"
+redirect_uri = "https://nvpiykrwhmiszeqrmuzg.supabase.co/auth/v1/callback"
+
+[functions]
+verify_jwt = true
+
+[functions.ai-proxy]
+verify_jwt = true
+
+[functions.request-account-deletion]
+verify_jwt = true
+
+[functions.confirm-account-deletion]
+verify_jwt = false
+
+[functions.evaluate-cancel-save]
+verify_jwt = true
+
+[functions.extend-trial]
+verify_jwt = true
+
+[functions.journal-subscribe]
+verify_jwt = false
+
+# User JWT **or** trusted caller: header `x-vela-internal-secret` matching
+# `GENERATE_WRAPPED_INTERNAL_SECRET` plus JSON `userId` (see function source).
+[functions.generate-monthly-wrapped]
+verify_jwt = false
+
+[functions.doctor-pdf-export]
+verify_jwt = true
+
+[functions.send-lapsed-digest]
+verify_jwt = false
+
+[functions.record-subscription]
+verify_jwt = false

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=pshajivnvuazvfciejyr",
+      "headers": {}
+    },
+    "supabase-vela": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=nvpiykrwhmiszeqrmuzg",
+      "headers": {}
+    }
+  }
+}

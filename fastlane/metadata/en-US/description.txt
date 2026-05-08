@@ -1,0 +1,49 @@
+Vela is the considered face tracker. Not a filter. Not a rating app. A real measurement tool that shows you what is actually changing in your face, week by week.
+
+HOW IT WORKS
+Take three guided photos each week. Vela's AR alignment ensures every scan is comparable to your last — same angle, same distance, same lighting check.
+
+HONEST SCORING
+A composite Vela score across five sub-metrics: Skin, Symmetry, Definition, Vitality, and Grooming. Every score change is explainable — tap any metric to see exactly what changed and why.
+
+YOUR ROUTINE, YOUR WAY
+After your baseline scan, Vela generates a personalized daily routine targeting your weakest areas. It adapts every week based on what is actually working for you.
+
+PRIVATE BY DESIGN
+All facial analysis happens on your device. Your photos never leave your phone unless you choose to back them up.
+
+CALIBRATED FOR EVERYONE
+Built for men, women, and non-binary users, across all skin tones and ages. The scoring model adjusts to your demographic baseline so the metrics actually mean something for you.
+
+TRACK REAL CHANGE
+See your week 1 vs week 12 comparison with photos you can trust are aligned. Use the slider, side-by-side, or difference views to spot what changed.
+
+DESIGNED LIKE OURA, NOT INSTAGRAM
+No "level up" gimmicks. No looksmaxxing vocabulary. No generic glow-up promises. Just real measurement, honest feedback, and a routine that adapts to your actual data.
+
+WHAT YOU GET
+- Weekly AR-aligned face scans
+- Five-dimensional scoring with weekly explanations
+- Personalized daily routine that adapts to your progress
+- Side-by-side, slider, and difference comparison views
+- Private timeline of your progress
+- Optional shareable progress cards
+- Full data export and account deletion controls
+
+REQUIREMENTS
+- iOS 16 or later
+- iPhone with TrueDepth camera (iPhone X or later)
+- Internet connection for AI features
+
+SUBSCRIPTION
+$79/year or $9.99/month. 7-day free trial on first subscription. Cancel anytime in iOS Settings.
+
+PRIVACY AND TERMS
+Privacy Policy: https://getvela.app/privacy
+Terms of Service: https://getvela.app/terms
+
+DISCLAIMER
+Vela is a wellness tracking tool, not medical advice. Consult a healthcare professional for skin or hair concerns.
+
+SUPPORT
+support@getvela.app

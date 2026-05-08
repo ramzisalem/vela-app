@@ -1,0 +1,26 @@
+Vela is a face-tracking wellness app for measurement and routine guidance. It is NOT a medical device and makes no medical claims. The app shows progress on user-recorded photos with weekly comparisons.
+
+REQUIREMENTS FOR REVIEW
+- Vela requires the TrueDepth camera (iPhone X or later). The Apple review device must support this.
+- A 7-day free trial is offered for both monthly ($9.99) and annual ($79) subscriptions.
+
+DEMO ACCOUNT
+Vela does not require demo credentials — anyone can create an account with Sign in with Apple or email. A "Skip onboarding (TestFlight)" option exists in the development build to help reviewers reach the dashboard quickly. The TestFlight build behaves identically to production except for the skip option.
+
+PERMISSIONS
+- Camera (NSCameraUsageDescription): required for face tracking. Permission is requested only when the user begins their first scan.
+- App Tracking Transparency (NSUserTrackingUsageDescription): requested AFTER the baseline-reveal screen and BEFORE the paywall (per file 31). Singular MMP attribution only initializes after consent (granted or denied).
+- Photo library (NSPhotoLibraryAddUsageDescription): requested only when the user taps "Save to Photos" on a share card. The app never saves to Photos automatically.
+- Notifications: requested after the first scan completes. All notification surfaces respect a per-week budget (file 12).
+
+DATA HANDLING
+- All photos remain on-device. We never transmit raw photos, depth maps, or face landmarks to our servers.
+- The AI proxy receives only numeric metrics derived on-device.
+- HealthKit (when granted) is read-only for cycle, sleep, and activity correlations and is fully optional.
+- Auth tokens stored in SecureStorage / Keychain only.
+
+CANCEL FLOW
+Subscription cancel is a single tap from Settings → Subscription. The save flow is a single bottom sheet with one offer; declining proceeds to cancellation. There are no multi-step "are you sure?" friction screens.
+
+CONTACT
+support@getvela.app

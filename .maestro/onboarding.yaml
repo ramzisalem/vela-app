@@ -1,0 +1,55 @@
+# Maestro E2E flow — Onboarding (file 26).
+# Runs on the EAS `test` profile build with USE_MOCK_AR + USE_MOCK_PURCHASES.
+appId: com.velapp.vela.dev
+---
+- launchApp:
+    clearState: true
+    arguments:
+      USE_MOCK_AR: "true"
+      USE_MOCK_PURCHASES: "true"
+      USE_MOCK_USER: "true"
+
+- assertVisible: "Track your face properly"
+- tapOn: "Get started"
+
+- assertVisible: "Sign in with Apple"
+- tapOn:
+    id: "test-skip-signin"
+
+# Onboarding canonical questions
+- assertVisible: "Tell us about yourself"
+- tapOn: "Continue"
+
+- tapOn: "Continue"
+- tapOn: "Continue"
+
+# Privacy primer (file 30)
+- assertVisible: "What stays on your phone"
+- tapOn: "Continue"
+
+# First scan
+- assertVisible: "First scan"
+- tapOn: "I'm ready"
+
+# Capture flow uses mocked AR module
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Captured"
+  timeout: 15000
+
+# Baseline reveal (file 38)
+- assertVisible: "Your baseline"
+  timeout: 30000
+- tapOn: "Continue"
+
+# Scan-anchor onboarding (file 42)
+- assertVisible: "Pick when you'll scan"
+- tapOn: "Sunday, with coffee"
+- tapOn: "Continue"
+
+# Paywall
+- assertVisible: "Start 7-day free trial"
+- tapOn: "Start 7-day free trial"
+
+- assertVisible: "Welcome to Vela"
+  timeout: 10000

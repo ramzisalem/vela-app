@@ -1,0 +1,82 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "development",
+        "EXPO_PUBLIC_API_ENV": "development"
+      }
+    },
+    "test": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "test",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "test",
+        "EXPO_PUBLIC_TEST_BUILD": "true",
+        "EXPO_PUBLIC_API_ENV": "staging",
+        "EXPO_PUBLIC_USE_MOCK_AR": "true"
+      }
+    },
+    "staging": {
+      "distribution": "internal",
+      "channel": "staging",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "staging",
+        "EXPO_PUBLIC_API_ENV": "staging"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "preview",
+        "EXPO_PUBLIC_API_ENV": "staging"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EAS_BUILD_PROFILE": "production",
+        "EXPO_PUBLIC_API_ENV": "production"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID",
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
+      }
+    },
+    "preview": {
+      "ios": {
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID",
+        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID"
+      }
+    }
+  }
+}
