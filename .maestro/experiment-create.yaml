@@ -3,7 +3,7 @@
 # Mock user has 4 weeks of stable history. Drives the user through
 # experiment setup, daily compliance log, and the verdict reveal once
 # the window closes (the mock advances simulated time forward).
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

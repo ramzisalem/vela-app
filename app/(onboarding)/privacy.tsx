@@ -5,12 +5,17 @@
  * and section D of the question stepper.
  */
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Body, Caption, Headline, HeadlineSerif } from '@/components/ui/Text';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
+import {
+  OnboardingAccentRule,
+  OnboardingAnimatedEnter,
+  OnboardingFooter,
+} from '@/components/onboarding/OnboardingChrome';
 import { Spacing } from '@/theme/spacing';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 
@@ -38,35 +43,43 @@ export default function Privacy() {
   const currentIndex = useOnboardingStore((s) => s.currentIndex);
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={{ paddingTop: Spacing.lg, paddingBottom: Spacing.xxl }}>
-        <Caption tone="secondary">A short pause</Caption>
-        <HeadlineSerif style={{ marginTop: Spacing.sm, marginBottom: Spacing.lg }}>
-          How we treat your data.
-        </HeadlineSerif>
-        {PILLARS.map((p) => (
-          <Card key={p.title} style={{ marginBottom: Spacing.base }}>
-            <Headline>{p.title}</Headline>
-            <Body tone="secondary" style={{ marginTop: Spacing.sm }}>
-              {p.body}
-            </Body>
-          </Card>
-        ))}
-        <Body tone="secondary" style={{ marginTop: Spacing.base }}>
-          A few more questions to make your routine fit you, and you’re ready for your baseline scan.
-        </Body>
+    <Screen variant="secondary">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: Spacing.xl, paddingBottom: Spacing.xxl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <OnboardingAnimatedEnter>
+          <OnboardingAccentRule />
+          <Caption tone="tertiary">A short pause</Caption>
+          <HeadlineSerif style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }}>
+            How we treat your data.
+          </HeadlineSerif>
+          {PILLARS.map((p) => (
+            <Card key={p.title} shadow="lift" style={{ marginBottom: Spacing.md }}>
+              <Headline>{p.title}</Headline>
+              <Body tone="secondary" style={{ marginTop: Spacing.sm }}>
+                {p.body}
+              </Body>
+            </Card>
+          ))}
+          <Body tone="secondary" style={{ marginTop: Spacing.lg }}>
+            Next, optional questions about what you use day to day and how you live — skip anything you
+            like. Your scan photos still stay on this device.
+          </Body>
+        </OnboardingAnimatedEnter>
       </ScrollView>
-      <View style={{ paddingBottom: Spacing.xl }}>
+      <OnboardingFooter>
         <Button
           label="Continue"
+          size="xl"
           fullWidth
           onPress={() => {
-            // Resume the stepper from where it was.
             setIndex(currentIndex + 1);
             router.replace('/(onboarding)/questions');
           }}
         />
-      </View>
+      </OnboardingFooter>
     </Screen>
   );
 }

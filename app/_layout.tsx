@@ -47,6 +47,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="sign-in" />
             <Stack.Screen name="(capture)" />
             <Stack.Screen name="paywall" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="subscription-required" options={{ presentation: 'fullScreenModal' }} />

@@ -6,67 +6,96 @@
  * cue life moments. No other emoji exceptions in onboarding.
  */
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/ui/Screen';
-import { Body, HeadlineSerif } from '@/components/ui/Text';
-import { useColors } from '@/theme';
+import { Body, Caption, HeadlineSerif, Text } from '@/components/ui/Text';
+import {
+  OnboardingAccentRule,
+  OnboardingAnimatedEnter,
+} from '@/components/onboarding/OnboardingChrome';
+import { useColors, useThemeMode } from '@/theme/ThemeContext';
+import { getShadow } from '@/theme/shadows';
 import { ANCHOR_PRESETS } from '@/types/anchor';
+import { Layout, Radii, Spacing } from '@/theme/spacing';
 import { useAnchorStore } from '@/stores/anchorStore';
 
 export default function ScanAnchorScreen() {
   const router = useRouter();
   const colors = useColors();
+  const mode = useThemeMode();
   const setKind = useAnchorStore((s) => s.setKind);
 
   return (
-    <Screen style={{ paddingHorizontal: 20, paddingTop: 24 }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 48 }}>
-        <HeadlineSerif>When does your week tend to slow down?</HeadlineSerif>
-        <Body tone="secondary" style={styles.subtitle}>
-          We’ll bring you back for your next scan around then. You can change this anytime.
-        </Body>
-        <View style={[styles.list, { borderColor: colors.border.subtle }]}>
-          {ANCHOR_PRESETS.map((opt, idx) => (
-            <Pressable
-              key={opt.kind}
-              accessibilityRole="button"
-              accessibilityLabel={opt.label}
-              onPress={() => {
-                setKind(opt.kind, {
-                  dayOfWeek: opt.defaultDayOfWeek,
-                  hour: opt.defaultHour,
-                });
-                router.replace('/paywall');
-              }}
-              style={[
-                styles.row,
-                idx === ANCHOR_PRESETS.length - 1 ? null : { borderBottomWidth: 1, borderBottomColor: colors.border.subtle },
-              ]}
-            >
-              <Body style={styles.glyph}>{opt.glyph}</Body>
-              <Body>{opt.label}</Body>
-            </Pressable>
-          ))}
-        </View>
+    <Screen variant="secondary">
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: Spacing.xl, paddingBottom: Spacing.huge }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <OnboardingAnimatedEnter>
+          <OnboardingAccentRule />
+          <HeadlineSerif style={{ marginBottom: Spacing.md }}>
+            When does your week tend to slow down?
+          </HeadlineSerif>
+          <Body tone="secondary" style={{ marginBottom: Spacing.xl }}>
+            We’ll bring you back for your next scan around then. You can change this anytime.
+          </Body>
+          <View style={{ gap: Spacing.md }}>
+            {ANCHOR_PRESETS.map((opt) => {
+              const hasGlyph = Boolean(opt.glyph?.trim());
+              return (
+                <Pressable
+                  key={opt.kind}
+                  accessibilityRole="button"
+                  accessibilityLabel={opt.label}
+                  onPress={() => {
+                    setKind(opt.kind, {
+                      dayOfWeek: opt.defaultDayOfWeek,
+                      hour: opt.defaultHour,
+                    });
+                    router.replace('/paywall');
+                  }}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: Spacing.md,
+                    minHeight: Layout.tapTarget + Spacing.sm,
+                    paddingVertical: Spacing.md,
+                    paddingHorizontal: Spacing.base,
+                    borderRadius: Radii.lg,
+                    borderWidth: Layout.hairline,
+                    borderColor: colors.border.subtle,
+                    backgroundColor: colors.background.tertiary,
+                    opacity: pressed ? 0.94 : 1,
+                    ...getShadow('soft', mode),
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: Radii.pill,
+                      backgroundColor: colors.accent.background,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {hasGlyph ? (
+                      <Text variant="body" tone="primary" style={{ fontSize: 22, lineHeight: 26 }}>
+                        {opt.glyph}
+                      </Text>
+                    ) : (
+                      <Caption tone="tertiary">—</Caption>
+                    )}
+                  </View>
+                  <Body style={{ flex: 1, flexShrink: 1 }}>{opt.label}</Body>
+                </Pressable>
+              );
+            })}
+          </View>
+        </OnboardingAnimatedEnter>
       </ScrollView>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  subtitle: { marginTop: 8, marginBottom: 24 },
-  list: {
-    borderWidth: 1,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    minHeight: 48,
-  },
-  glyph: { width: 28 },
-});

@@ -2,8 +2,8 @@
  * Score reveal (file 05 + 08).
  *
  * For baseline: shows score + sub-scores + AI-generated explanation, then
- * the pre-paywall preview cards (file 40). The paywall presents ~1.2s after
- * the user taps Continue.
+ * the pre-paywall preview cards (file 40). Continue opens the remaining
+ * onboarding questions (post-scan), then scan-anchor and paywall (file 42).
  */
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
@@ -21,6 +21,7 @@ import { useProfileStore } from '@/stores/profileStore';
 import { useSingularPostBaselineInit } from '@/hooks/useSingularPostBaselineInit';
 import { DiaryAttachButton } from '@/components/diary/DiaryAttachButton';
 import { useHairStore } from '@/stores/hairStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 
 export default function ResultsReveal() {
   const router = useRouter();
@@ -123,11 +124,15 @@ export default function ResultsReveal() {
           fullWidth
           onPress={() => {
             if (latest.isBaseline) {
-              // Scan-anchor screen sits between baseline reveal and paywall (file 42).
-              router.replace('/(onboarding)/scan-anchor');
-            } else {
-              router.replace('/(main)/dashboard');
+              const { questionPhase, setQuestionPhase, setIndex } = useOnboardingStore.getState();
+              if (questionPhase === 'pre_scan') {
+                setQuestionPhase('post_scan');
+                setIndex(0);
+              }
+              router.replace('/(onboarding)/questions');
+              return;
             }
+            router.replace('/(main)/dashboard');
           }}
         />
       </View>

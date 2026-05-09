@@ -78,8 +78,10 @@ export async function completePostPaywallSignup(args: SignupArgs): Promise<Signu
     return { ok: false, error: 'Subscription identity failed: ' + (e as Error).message };
   }
 
-  // 3. Compose + insert profile.
-  const profile = useOnboardingStore.getState().composeProfile(userId, email);
+  // 3. Compose + insert profile (deferred Q17–27 sync later; file 07).
+  const profile = useOnboardingStore.getState().composeProfile(userId, email, {
+    omitDeferredAnswers: true,
+  });
   try {
     await upsertProfile(profile);
   } catch (e) {
@@ -87,6 +89,9 @@ export async function completePostPaywallSignup(args: SignupArgs): Promise<Signu
   }
 
   useProfileStore.getState().setProfile(profile);
+  useOnboardingStore.getState().setQuestionPhase('deferred');
+  useOnboardingStore.getState().setIndex(0);
+  useOnboardingStore.getState().bindPersistedOnboardingToUser(userId);
   useAppState.getState().setUser({ id: userId, email });
   useAppState.getState().completeOnboarding();
 

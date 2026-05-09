@@ -6,29 +6,37 @@
  * until first share (file 13 lazy-permission rule).
  */
 import React from 'react';
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Body, Headline } from '@/components/ui/Text';
+import { Body, HeadlineSerif } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { Screen } from '@/components/ui/Screen';
+import {
+  OnboardingAccentRule,
+  OnboardingAnimatedEnter,
+  OnboardingFooter,
+} from '@/components/onboarding/OnboardingChrome';
 import { Spacing } from '@/theme/spacing';
 
 export default function Permissions() {
   const router = useRouter();
   return (
-    <Screen>
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Headline style={{ marginBottom: Spacing.lg }}>Camera access</Headline>
+    <Screen variant="secondary">
+      <OnboardingAnimatedEnter style={{ flex: 1, justifyContent: 'center' }}>
+        <OnboardingAccentRule />
+        <HeadlineSerif style={{ marginBottom: Spacing.lg }}>Camera access</HeadlineSerif>
         <Body tone="secondary">
           Vela uses your camera to capture weekly face scans using AR alignment. Photos stay on
           your device.
         </Body>
-      </View>
-      <Button
-        label="Allow camera"
-        fullWidth
-        onPress={() => router.replace('/(capture)/capture?isBaseline=true')}
-      />
+      </OnboardingAnimatedEnter>
+      <OnboardingFooter>
+        <Button
+          label="Allow camera"
+          size="xl"
+          fullWidth
+          onPress={() => router.replace('/(capture)/capture?isBaseline=true')}
+        />
+      </OnboardingFooter>
     </Screen>
   );
 }

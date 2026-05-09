@@ -7,6 +7,7 @@ import type { AppFlow, SessionUser, SubscriptionStatus } from '@/types';
 import { fetchSubscriptionStatus } from '@/services/revenuecat/init';
 import { inactiveSubscriptionFlow } from '@/services/revenuecat/subscriptionFlow';
 import { useFeatureRevealStore } from '@/stores/featureRevealStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useProfileStore } from '@/stores/profileStore';
 import Purchases from 'react-native-purchases';
 
@@ -89,6 +90,7 @@ export const useAppState = create<AppStateStore>((set, get) => ({
       return;
     }
     useFeatureRevealStore.getState().resetForSignOut();
+    useOnboardingStore.getState().reset();
     useProfileStore.getState().clear();
     try {
       await Purchases.logOut();

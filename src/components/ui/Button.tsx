@@ -34,7 +34,7 @@ import { Text } from './Text';
 import { SpringConfig, AnimationDuration } from '@/theme/animations';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface ButtonProps {
   label: string;
@@ -56,6 +56,8 @@ const SIZE: Record<ButtonSize, { height: number; px: number; variant: 'body' | '
   sm: { height: 36, px: Spacing.base, variant: 'caption' },
   md: { height: Layout.tapTarget, px: Spacing.lg, variant: 'bodyEmphasis' },
   lg: { height: 56, px: Spacing.xl, variant: 'bodyEmphasis' },
+  /** Primary CTAs that need extra presence (e.g. onboarding). */
+  xl: { height: 64, px: Spacing.xl, variant: 'bodyEmphasis' },
 };
 
 export function Button({
@@ -123,6 +125,7 @@ export function Button({
     justifyContent: 'center',
     opacity: disabled ? 0.45 : 1,
     alignSelf: fullWidth ? 'stretch' : 'flex-start',
+    ...(fullWidth ? { width: '100%' } : {}),
   };
 
   if (variant === 'primary') {
@@ -164,7 +167,9 @@ export function Button({
   const borderWidth = variant === 'secondary' ? Layout.hairline : 0;
 
   return (
-    <Animated.View style={[animatedStyle, style]}>
+    <Animated.View
+      style={[animatedStyle, style, fullWidth ? { alignSelf: 'stretch', width: '100%' } : undefined]}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}

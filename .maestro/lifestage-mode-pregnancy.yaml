@@ -1,6 +1,6 @@
 # Maestro E2E flow — Pregnancy life-stage mode side effects (file 48).
 # Verifies: tretinoin disappears from routine, aging band suppressed, streak auto-pause messaging.
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

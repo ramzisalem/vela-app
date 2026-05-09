@@ -1,5 +1,5 @@
 # Maestro E2E flow — Weekly capture (file 04 + 26).
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

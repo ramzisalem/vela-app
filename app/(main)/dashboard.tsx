@@ -1,8 +1,9 @@
 /**
  * Dashboard (file 10). Reads from the 7-slot card-stack registry.
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Caption, DisplaySerif } from '@/components/ui/Text';
 import { Screen } from '@/components/ui/Screen';
 import { Wordmark } from '@/components/brand';
@@ -38,8 +39,14 @@ import {
 } from '@/core/longTerm/longTermEngine';
 import { useDiaryStore } from '@/stores/diaryStore';
 import { useHairStore } from '@/stores/hairStore';
+import { useAppState } from '@/stores/appStateStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 
 export default function Dashboard() {
+  const router = useRouter();
+  const user = useAppState((s) => s.user);
+  const questionPhase = useOnboardingStore((s) => s.questionPhase);
+  const persistedForUserId = useOnboardingStore((s) => s.persistedForUserId);
   const profile = useProfileStore((s) => s.profile);
   const scans = useScanStore((s) => s.sessions);
   const routine = useRoutineStore((s) => s.currentRoutine);
@@ -49,6 +56,18 @@ export default function Dashboard() {
 
   const diaryEntries = useDiaryStore((s) => s.entries);
   const hairTrackingEnabled = useHairStore((s) => s.enabled);
+
+  useEffect(() => {
+    const goDeferred = () => {
+      if (!user?.id) return;
+      if (questionPhase !== 'deferred') return;
+      if (persistedForUserId !== user.id) return;
+      router.replace('/(onboarding)/questions');
+    };
+    const unsub = useOnboardingStore.persist.onFinishHydration(goDeferred);
+    if (useOnboardingStore.persist.hasHydrated()) goDeferred();
+    return unsub;
+  }, [router, user?.id, questionPhase, persistedForUserId]);
 
   const ctx: DashboardContext = useMemo(() => {
     const latest = scans[scans.length - 1];

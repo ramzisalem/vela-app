@@ -8,6 +8,7 @@ export default function OnboardingLayout() {
         headerShown: false,
         // File 23: onboarding is a forced linear stack — disable swipe-back gesture.
         gestureEnabled: false,
+        animation: 'fade',
       }}
     />
   );

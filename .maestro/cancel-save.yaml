@@ -1,5 +1,5 @@
 # Maestro E2E flow — Cancel-save sheet + exit interview (file 47).
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

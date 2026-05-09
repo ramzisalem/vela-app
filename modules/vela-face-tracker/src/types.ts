@@ -23,6 +23,11 @@ export interface AlignmentChecks {
 export interface FaceTrackingState {
   isFaceDetected: boolean;
   isReady: boolean;
+  /**
+   * 0…1 while distance, alignment, light, and neutral are all OK but the
+   * native 0.5s debounce has not completed yet. Drives the shutter “arming” ring.
+   */
+  readyHoldProgress?: number;
   /** Real-time distance to camera, meters. */
   distance: number;
   /** Reconciled per the plan — Swift now also emits this. */
@@ -67,4 +72,4 @@ export const DEFAULT_MIN_DISTANCE = 0.25;
 export const DEFAULT_MAX_DISTANCE = 0.55;
 export const DEFAULT_ROTATION_TOLERANCE_RAD = 0.08;
 export const DEFAULT_DISTANCE_TOLERANCE_M = 0.05;
-export const DEFAULT_MIN_LIGHT = 500;
+export const DEFAULT_MIN_LIGHT = 300;

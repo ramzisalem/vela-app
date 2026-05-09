@@ -3,7 +3,7 @@
 # Confirms the post-baseline reveal exposes a "Add a note" button,
 # the diary sheet opens, accepts free-text + tag, and the entry shows up
 # back on the dashboard / history.
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

@@ -6,8 +6,11 @@
 export type AnalyticsEvent =
   // Onboarding
   | 'onboarding_started'
+  | 'onboarding_phase_started'
   | 'onboarding_question_answered'
   | 'onboarding_completed'
+  | 'onboarding_scan_hint_applied'
+  | 'onboarding_deferred_profile_saved'
   | 'privacy_primer_viewed'
 
   // Capture

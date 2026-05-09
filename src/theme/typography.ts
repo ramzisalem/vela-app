@@ -4,9 +4,8 @@
  * Rules:
  *   - Sentence case ALWAYS. No Title Case. No ALL CAPS beyond `label`.
  *   - Drop fontWeight `'700'` — use `'500'` instead.
- *   - Serif (`displaySerif`, `headlineSerif`, `sectionMarker`) only for editorial
- *     moments: welcome, paywall promise, score reveal, Morning/Evening section
- *     markers in routine.
+ *   - Serif for all display headings: `title`, `headline`, `displaySerif`,
+ *     `headlineSerif`, `sectionMarker`. Sans stays for body, labels, and UI chrome.
  */
 import { TextStyle, Platform, PixelRatio } from 'react-native';
 
@@ -17,9 +16,11 @@ export const FONT_SANS = Platform.select({
 }) as string;
 
 export const FONT_SERIF = Platform.select({
-  // iOS: New York is the system serif.
-  ios: 'New York',
-  // Android: fall back to system serif.
+  // iOS: RN resolves fonts via `fontNamesForFamilyName` / `fontWithName:`. The
+  // literal "New York" is not a stable RN family string and falls back to the
+  // system sans. Georgia is a built-in family that always renders as serif.
+  ios: 'Georgia',
+  // Android: generic serif maps to the device’s serif (often Noto Serif).
   android: 'serif',
   default: 'serif',
 }) as string;
@@ -53,9 +54,9 @@ export const Typography = {
   /** Used for "Morning" / "Evening" markers in routine, etc. */
   sectionMarker: { ...baseSerif(15, 20, '500'), fontStyle: 'italic' as const },
 
-  // Sans hierarchy
-  title: baseSans(28, 34, '500'),
-  headline: baseSans(22, 28, '500'),
+  // Heading hierarchy (serif)
+  title: baseSerif(28, 34, '500'),
+  headline: baseSerif(22, 28, '500'),
   body: baseSans(16, 22, '400'),
   bodyEmphasis: baseSans(16, 22, '500'),
   caption: baseSans(13, 18, '400'),

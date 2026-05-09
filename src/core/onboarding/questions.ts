@@ -66,7 +66,59 @@ export type QuestionId =
   | 'q29_notifications'
   | 'q30_checkin';
 
-type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
+export type SectionId = 'A' | 'B' | 'C' | 'D' | 'E';
+
+/**
+ * Scan-first onboarding (file 07):
+ * - pre_scan: essentials + goals + reminders before baseline capture
+ * - post_scan: profile needed before paywall (skin, routine, focus)
+ * - deferred: lifestyle / products / hormones after signup (optional depth)
+ * - complete: no further onboarding questions (persisted gate for dashboard)
+ */
+export type OnboardingQuestionPhase =
+  | 'pre_scan'
+  | 'post_scan'
+  | 'deferred'
+  | 'complete';
+
+const PRE_SCAN_QUESTION_IDS = new Set<QuestionId>([
+  'q1_gender',
+  'q1b_framework',
+  'q2_age',
+  'q3_ethnicity',
+  'q10_appearance_goals',
+  'q11_primary_goal',
+  'q12_ideal_outcomes',
+  'q29_notifications',
+  'q30_checkin',
+]);
+
+/** Q17–Q27: answered after account creation when convenient. */
+const DEFERRED_QUESTION_IDS = new Set<QuestionId>([
+  'q17_current_products',
+  'q18_active_treatments',
+  'q19_recent_procedures',
+  'q20_exercise',
+  'q21_diet',
+  'q22_water',
+  'q23_sleep',
+  'q24_stress',
+  'q25_substances',
+  'q26_hormonal',
+  'q27_self_perception',
+]);
+
+export function isPreScanQuestionId(id: QuestionId): boolean {
+  return PRE_SCAN_QUESTION_IDS.has(id);
+}
+
+export function isDeferredQuestionId(id: QuestionId): boolean {
+  return DEFERRED_QUESTION_IDS.has(id);
+}
+
+export function isPostScanQuestionId(id: QuestionId): boolean {
+  return !isPreScanQuestionId(id) && !isDeferredQuestionId(id);
+}
 
 export interface OptionDef<T extends string> {
   value: T;
@@ -81,6 +133,8 @@ interface BaseQuestion {
   type: QuestionType;
   title: string;
   subtitle?: string;
+  /** Extra reassurance for sensitive topics (file 07). */
+  trustLine?: string;
   required: boolean;
   section: SectionId;
 }
@@ -129,7 +183,6 @@ const Q1: SelectQuestion<Gender> = {
   required: true,
   type: 'select',
   title: 'How do you describe your gender?',
-  subtitle: 'This shapes how we score your scans.',
   options: [
     { value: 'man', label: 'Man' },
     { value: 'woman', label: 'Woman' },
@@ -178,7 +231,8 @@ const Q3: SelectQuestion<EthnicityOption> = {
   required: false,
   type: 'select',
   title: 'How would you describe your background?',
-  subtitle: 'We use this only to calibrate scores fairly across groups.',
+  subtitle:
+    'We use this only to calibrate scores fairly across groups. This is yours to set — we never infer it from your photo.',
   options: [
     { value: 'east_asian', label: 'East Asian' },
     { value: 'southeast_asian', label: 'Southeast Asian' },
@@ -425,6 +479,7 @@ const Q17: TextQuestion = {
   type: 'text',
   title: 'What are you using on your skin right now?',
   subtitle: 'Comma-separated is fine. We’ll structure these later.',
+  trustLine: 'For your routine view only. We never sell this list.',
   multiline: true,
   maxLength: 600,
 };
@@ -436,6 +491,7 @@ const Q18: TextQuestion = {
   type: 'text',
   title: 'Any active treatments?',
   subtitle: 'Tretinoin, finasteride, microneedling, etc. Optional.',
+  trustLine: 'Helps us avoid conflicting advice. Not shown to anyone else.',
   multiline: true,
   maxLength: 400,
 };
@@ -469,6 +525,7 @@ const Q20: SelectQuestion<ExerciseFrequency> = {
   required: false,
   type: 'select',
   title: 'How often do you move?',
+  trustLine: 'Context for tone and puffiness over time. Never sold or shared.',
   options: [
     { value: 'sedentary', label: 'Sedentary' },
     { value: 'light', label: 'Lightly active' },
@@ -483,6 +540,7 @@ const Q21: SelectQuestion<DietPattern> = {
   required: false,
   type: 'select',
   title: 'How would you describe your diet?',
+  trustLine: 'Used only to tune suggestions. Optional to answer.',
   options: [
     { value: 'omnivore_balanced', label: 'Balanced omnivore' },
     { value: 'omnivore_processed', label: 'Omnivore, processed-leaning' },
@@ -543,6 +601,7 @@ const Q25: MultiSelectQuestion<SubstanceHabit> = {
   type: 'multiselect',
   title: 'Anything that affects your skin in the background?',
   subtitle: 'Optional. We use this only for context.',
+  trustLine: 'Stays private. Never used for ads or resale.',
   options: [
     { value: 'none', label: 'None of these' },
     { value: 'alcohol_occasional', label: 'Occasional alcohol' },
@@ -618,6 +677,7 @@ const Q29: SelectQuestion<'enabled' | 'declined'> = {
   type: 'select',
   title: 'Want a quiet weekly nudge to scan?',
   subtitle: 'You pick the day and time. One scan per week, no streaks shaming.',
+  trustLine: 'After this, camera access for your first baseline scan.',
   options: [
     { value: 'enabled', label: 'Yes, remind me' },
     { value: 'declined', label: 'Not right now' },
@@ -672,12 +732,22 @@ export const QUESTION_BANK: ReadonlyArray<Question> = [
  * Q1 → Q1b conditional gate. Returns the questions in the order they
  * should appear in the stepper.
  */
-export function visibleQuestions(answers: Partial<Record<QuestionId, unknown>>): Question[] {
+export function visibleQuestions(
+  answers: Partial<Record<QuestionId, unknown>>,
+  phase: OnboardingQuestionPhase = 'pre_scan',
+): Question[] {
+  if (phase === 'complete') {
+    return [];
+  }
   const gender = answers.q1_gender as Gender | undefined;
   return QUESTION_BANK.filter((q) => {
     if (q.id === 'q1b_framework') {
+      if (phase === 'deferred') return false;
       return gender === 'non_binary' || gender === 'prefer_not_to_say';
     }
+    if (phase === 'pre_scan') return isPreScanQuestionId(q.id);
+    if (phase === 'post_scan') return isPostScanQuestionId(q.id);
+    if (phase === 'deferred') return isDeferredQuestionId(q.id);
     return true;
   });
 }

@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "VelaDev.app"
-               BlueprintName = "VelaDev"
-               ReferencedContainer = "container:VelaDev.xcodeproj">
+               BuildableName = "Vela.app"
+               BlueprintName = "Vela"
+               ReferencedContainer = "container:Vela.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "VelaDevTests.xctest"
-               BlueprintName = "VelaDevTests"
-               ReferencedContainer = "container:VelaDev.xcodeproj">
+               BuildableName = "VelaTests.xctest"
+               BlueprintName = "VelaTests"
+               ReferencedContainer = "container:Vela.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "VelaDev.app"
-            BlueprintName = "VelaDev"
-            ReferencedContainer = "container:VelaDev.xcodeproj">
+            BuildableName = "Vela.app"
+            BlueprintName = "Vela"
+            ReferencedContainer = "container:Vela.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "VelaDev.app"
-            BlueprintName = "VelaDev"
-            ReferencedContainer = "container:VelaDev.xcodeproj">
+            BuildableName = "Vela.app"
+            BlueprintName = "Vela"
+            ReferencedContainer = "container:Vela.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

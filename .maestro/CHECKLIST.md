@@ -1,7 +1,7 @@
 # Maestro E2E Checklist
 
 > Critical-path flows for v1.0 → v1.5. Use the **EAS `test` profile** build
-> (`EXPO_PUBLIC_TEST_BUILD=true`, bundle id **`com.velapp.vela.dev`**).
+> (`EXPO_PUBLIC_TEST_BUILD=true`, bundle id **`com.velapp.vela`**).
 > See **`Docs/REVIEW_PHASE_A_INVENTORY.md`** for env + mock policy.
 
 ## Harness notes

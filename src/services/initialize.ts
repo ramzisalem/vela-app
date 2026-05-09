@@ -21,6 +21,7 @@ import { useScanStore } from '@/stores/scanStore';
 import { useDiaryStore } from '@/stores/diaryStore';
 import { useHairStore } from '@/stores/hairStore';
 import { useTreatmentStore } from '@/stores/treatmentStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useProfileStore } from '@/stores/profileStore';
 
 let foregroundListener: { remove: () => void } | null = null;
@@ -52,6 +53,17 @@ export async function hydrateStoresForUserSession(session: Session): Promise<voi
     ]);
   } catch (e) {
     console.warn('[session] local-first hydrate failed', e);
+  }
+
+  const ob = useOnboardingStore.getState();
+  if (ob.persistedForUserId !== null && ob.persistedForUserId !== userId) {
+    useOnboardingStore.getState().reset();
+  }
+
+  const profile = useProfileStore.getState().profile;
+  const ob3 = useOnboardingStore.getState();
+  if (profile && ob3.persistedForUserId === null && ob3.questionPhase !== 'deferred') {
+    useOnboardingStore.getState().setQuestionPhase('complete');
   }
 
   const sessions = useScanStore.getState().sessions;

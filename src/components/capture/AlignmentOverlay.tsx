@@ -20,10 +20,12 @@ import { Layout } from '@/theme/spacing';
 interface AlignmentOverlayProps {
   isReady: boolean;
   hasFace: boolean;
+  /** 0…1 while checks pass but native debounce has not fired yet. */
+  holdProgress?: number;
   reduceMotion?: boolean;
 }
 
-export function AlignmentOverlay({ isReady, hasFace, reduceMotion }: AlignmentOverlayProps) {
+export function AlignmentOverlay({ isReady, hasFace, holdProgress = 0, reduceMotion }: AlignmentOverlayProps) {
   const colors = useColors();
   const pulse = useSharedValue(1);
 
@@ -43,11 +45,15 @@ export function AlignmentOverlay({ isReady, hasFace, reduceMotion }: AlignmentOv
     transform: [{ scale: pulse.value }],
   }));
 
+  const hp = holdProgress;
   const stroke = isReady
     ? colors.accent.default
-    : hasFace
-      ? colors.warning.default
-      : colors.text.tertiary;
+    : !hasFace
+      ? colors.text.tertiary
+      : hp >= 0.12
+        ? colors.accent.muted
+        : colors.warning.default;
+  const ringWidth = Layout.hairline + 1 + (isReady ? 2 : hasFace ? Math.min(3, hp * 4) : 0);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -55,7 +61,7 @@ export function AlignmentOverlay({ isReady, hasFace, reduceMotion }: AlignmentOv
         style={[
           styles.frame,
           animatedStyle,
-          { borderColor: stroke, borderWidth: Layout.hairline + 1 },
+          { borderColor: stroke, borderWidth: ringWidth },
         ]}
       />
     </View>

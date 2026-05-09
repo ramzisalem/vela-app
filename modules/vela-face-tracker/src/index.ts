@@ -1,7 +1,7 @@
 /**
  * VelaFaceTracker — JS-side public API (file 04).
  *
- * Wraps the native VelaFaceTrackerModule + VelaFaceTrackerView. iOS only
+ * Wraps the native `VelaFaceTrackerModule` (Swift `Name(...)`) and its embedded view. iOS only
  * at v1; Android ARCore deferred to v2.
  */
 import { requireNativeModule, EventEmitter, requireNativeViewManager } from 'expo-modules-core';
@@ -12,6 +12,7 @@ import type {
   FaceTrackingConfig,
   FaceTrackingState,
 } from './types';
+import { normalizeTrackingState } from './normalizeTrackingState';
 
 export * from './types';
 
@@ -83,13 +84,17 @@ export const VelaFaceTracker = {
 
   addStateListener(handler: (state: FaceTrackingState) => void) {
     if (Platform.OS !== 'ios') return { remove: () => undefined };
-    const sub = getEmitter().addListener('onTrackingStateChange', handler);
+    const sub = getEmitter().addListener('onTrackingStateChange', (payload: unknown) => {
+      handler(normalizeTrackingState(payload));
+    });
     return sub;
   },
 
   addCaptureReadyListener(handler: (state: FaceTrackingState) => void) {
     if (Platform.OS !== 'ios') return { remove: () => undefined };
-    const sub = getEmitter().addListener('onCaptureReady', handler);
+    const sub = getEmitter().addListener('onCaptureReady', (payload: unknown) => {
+      handler(normalizeTrackingState(payload));
+    });
     return sub;
   },
 };
@@ -99,7 +104,7 @@ import type { ViewProps } from 'react-native';
 
 const NativeView: ComponentType<ViewProps> =
   Platform.OS === 'ios'
-    ? (requireNativeViewManager('VelaFaceTrackerView') as ComponentType<ViewProps>)
+    ? (requireNativeViewManager('VelaFaceTrackerModule') as ComponentType<ViewProps>)
     : ((() => null) as unknown as ComponentType<ViewProps>);
 
 export const VelaFaceTrackerView = NativeView;

@@ -14,7 +14,10 @@ import { Radii, Spacing } from '@/theme/spacing';
 export interface CheckIndicatorsProps {
   distanceOk: boolean;
   lightOk: boolean;
+  /** Yaw, pitch, roll vs camera (native). */
   alignmentOk: boolean;
+  /** Blend-shape neutrality (native). */
+  expressionOk: boolean;
 }
 
 interface PillProps {
@@ -27,11 +30,13 @@ function Pill({ label, ok }: PillProps) {
   return (
     <View
       style={{
-        paddingHorizontal: Spacing.sm,
+        paddingHorizontal: Spacing.xs,
         paddingVertical: Spacing.xxs,
         borderRadius: Radii.pill,
-        backgroundColor: ok ? colors.accent.background : 'rgba(0,0,0,0.18)',
-        marginHorizontal: Spacing.xxs,
+        backgroundColor: ok ? colors.accent.background : 'rgba(0,0,0,0.22)',
+        borderWidth: ok ? 1 : 0,
+        borderColor: ok ? colors.border.accent : 'transparent',
+        marginHorizontal: 2,
       }}
       accessibilityLabel={`${label}: ${ok ? 'good' : 'adjust'}`}
     >
@@ -40,12 +45,13 @@ function Pill({ label, ok }: PillProps) {
   );
 }
 
-export function CheckIndicators({ distanceOk, lightOk, alignmentOk }: CheckIndicatorsProps) {
+export function CheckIndicators({ distanceOk, lightOk, alignmentOk, expressionOk }: CheckIndicatorsProps) {
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
       <Pill label="Distance" ok={distanceOk} />
       <Pill label="Light" ok={lightOk} />
-      <Pill label="Alignment" ok={alignmentOk} />
+      <Pill label="Pose" ok={alignmentOk} />
+      <Pill label="Calm" ok={expressionOk} />
     </View>
   );
 }

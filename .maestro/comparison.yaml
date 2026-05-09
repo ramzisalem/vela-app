@@ -1,5 +1,5 @@
 # Maestro E2E flow — Compare tab three modes (file 11 + 26).
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

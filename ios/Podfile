@@ -34,7 +34,7 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'VelaDev' do
+target 'Vela' do
   pod 'simdjson', :path => '../node_modules/@nozbe/simdjson', :modular_headers => true
   use_expo_modules!
   config = use_native_modules!

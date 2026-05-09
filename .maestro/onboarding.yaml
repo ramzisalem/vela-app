@@ -1,6 +1,6 @@
 # Maestro E2E flow — Onboarding (file 26).
 # Runs on the EAS `test` profile build with USE_MOCK_AR + USE_MOCK_PURCHASES.
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     clearState: true

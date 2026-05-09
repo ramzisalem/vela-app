@@ -3,7 +3,7 @@
 # Mock user has 6 weeks of scans plus seeded HealthKit snapshots.
 # The correlation card appears on dashboard slot 4 once a |R| ≥ 0.4
 # pairing is found.
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

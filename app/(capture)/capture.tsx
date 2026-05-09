@@ -11,10 +11,17 @@
  *   - Partial scan allowed with indicator; baseline always saved.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  BackHandler,
+  InteractionManager,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Body, Headline } from '@/components/ui/Text';
+import { Body, Caption, Headline } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme/ThemeContext';
 import { Spacing } from '@/theme/spacing';
@@ -29,12 +36,7 @@ import { AlignmentOverlay } from '@/components/capture/AlignmentOverlay';
 import { CheckIndicators } from '@/components/capture/CheckIndicators';
 import { ShutterButton } from '@/components/capture/ShutterButton';
 import { AngleProgress } from '@/components/capture/AngleProgress';
-import {
-  alignmentHintText,
-  distanceHintText,
-  lightHintText,
-  neutralHintText,
-} from '@/components/capture/distanceHint';
+import { scannerInstruction } from '@/components/capture/distanceHint';
 import { processCaptureSession } from '@/core/scoring/scoringEngine';
 import { useProfileStore } from '@/stores/profileStore';
 import { useScanStore } from '@/stores/scanStore';
@@ -44,8 +46,32 @@ import { toast } from '@/components/feedback/toastService';
 const ANGLES: ReadonlyArray<CaptureAngle> = ['front', 'left_turn', 'right_turn'];
 const MAX_RETAKES_PER_SESSION = 2;
 
+/** Let native preview + RN layout settle before AR emits (reduces sparse / missed first frames after mount). */
+function awaitLayoutAndInteractions(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+  });
+}
+
+const ANGLE_TITLE: Record<CaptureAngle, string> = {
+  front: 'Front',
+  left_turn: 'Left turn',
+  right_turn: 'Right turn',
+};
+
+const ANGLE_SUBTITLE: Record<CaptureAngle, string> = {
+  front: "Arm's length, eyes toward the camera",
+  left_turn: 'Ease your head until the oval steadies',
+  right_turn: 'Ease your head until the oval steadies',
+};
+
 export default function CaptureScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const colors = useColors();
   const { isBaseline } = useLocalSearchParams<{ isBaseline?: string }>();
   const profile = useProfileStore((s) => s.profile);
@@ -59,9 +85,27 @@ export default function CaptureScreen() {
   const [retakeCount, setRetakeCount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const stoppedRef = useRef(false);
+  const lastHoldProgressRef = useRef(0);
+
+  /** Baseline opens capture with `replace` — no stack to `back()`; weekly scans exit to home. */
+  const exitCapture = useCallback(() => {
+    if (isBaseline === 'true') {
+      router.replace('/(onboarding)/permissions');
+    } else {
+      router.replace('/(main)/dashboard');
+    }
+  }, [router, isBaseline]);
 
   const currentAngle = ANGLES[angleIndex] ?? 'front';
   const captured = ANGLES.filter((a) => captures[a]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      exitCapture();
+      return true;
+    });
+    return () => sub.remove();
+  }, [exitCapture]);
 
   // Reduce Motion (file 28).
   useEffect(() => {
@@ -73,11 +117,19 @@ export default function CaptureScreen() {
     return () => sub.remove();
   }, []);
 
-  // Native session lifecycle.
+  // Drop stale metrics immediately when the scan step changes (native emits on its own cadence).
   useEffect(() => {
-    let stateSub: { remove: () => void } | null = null;
+    setTrackingState(null);
+  }, [currentAngle]);
+
+  // Native session lifecycle (cancel-safe: avoids orphan listeners / stale sessions on Strict Mode or fast remounts).
+  useEffect(() => {
+    let cancelled = false;
+    const subRef = { current: null as { remove: () => void } | null };
+
     (async () => {
       const supported = await VelaFaceTracker.isSupported();
+      if (cancelled) return;
       if (!supported) {
         toast.warning(
           'This device does not support TrueDepth face tracking. Vela requires iPhone X or later.',
@@ -85,21 +137,48 @@ export default function CaptureScreen() {
         return;
       }
       const granted = await VelaFaceTracker.requestPermission();
+      if (cancelled) return;
       if (!granted) {
         toast.error('Camera access is needed for your scan. Open Settings to allow.');
         return;
       }
+      if (cancelled) return;
+      VelaFaceTracker.configure({ angle: currentAngle });
+      // Subscribe **before** `startSession`: otherwise Swift can emit frames while no JS listener exists.
+      const sub = VelaFaceTracker.addStateListener(setTrackingState);
+      subRef.current = sub;
+      await awaitLayoutAndInteractions();
+      if (cancelled) {
+        sub.remove();
+        subRef.current = null;
+        return;
+      }
       await VelaFaceTracker.startSession(currentAngle);
-      stateSub = VelaFaceTracker.addStateListener(setTrackingState);
+      if (cancelled) {
+        sub.remove();
+        subRef.current = null;
+        if (!stoppedRef.current) VelaFaceTracker.stopSession();
+        return;
+      }
     })();
 
     return () => {
-      stateSub?.remove();
+      cancelled = true;
+      subRef.current?.remove();
+      subRef.current = null;
       if (!stoppedRef.current) {
         VelaFaceTracker.stopSession();
       }
     };
   }, [currentAngle]);
+
+  useEffect(() => {
+    const hp = trackingState?.readyHoldProgress ?? 0;
+    if (hp >= 0.5 && lastHoldProgressRef.current < 0.5) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    }
+    lastHoldProgressRef.current = hp;
+  }, [trackingState?.readyHoldProgress]);
 
   const onCapture = useCallback(async () => {
     if (isProcessing) return;
@@ -139,7 +218,7 @@ export default function CaptureScreen() {
   async function finishSession(allCaptures: Partial<Record<CaptureAngle, CaptureResult>>) {
     if (!profile) {
       toast.error('Profile is still loading. Please retry in a moment.');
-      router.back();
+      exitCapture();
       return;
     }
     const angles = (Object.entries(allCaptures) as [CaptureAngle, CaptureResult][]).map(
@@ -161,51 +240,63 @@ export default function CaptureScreen() {
     router.replace('/(capture)/processing');
   }
 
-  const distanceOk = trackingState?.distanceHint === 'in_range';
+  const hasFace = !!trackingState?.isFaceDetected;
+  const distanceOk = hasFace && trackingState?.distanceHint === 'in_range';
   const lightOk = !!trackingState?.isLightOk;
   const alignmentOk =
+    hasFace &&
     !!trackingState?.alignment.yawOk &&
     !!trackingState?.alignment.pitchOk &&
     !!trackingState?.alignment.rollOk;
+  const expressionOk = hasFace && !!trackingState?.isNeutral;
+  const holdProgress = trackingState?.readyHoldProgress ?? 0;
 
-  const hint =
-    distanceHintText(trackingState?.distanceHint ?? 'no_face') ||
-    lightHintText(lightOk) ||
-    alignmentHintText(
-      !!trackingState?.alignment.yawOk,
-      !!trackingState?.alignment.pitchOk,
-      !!trackingState?.alignment.rollOk,
-    ) ||
-    neutralHintText(!!trackingState?.isNeutral);
+  const instruction = scannerInstruction(currentAngle, trackingState);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background.camera }]}>
-      <VelaFaceTrackerView style={StyleSheet.absoluteFill} />
+      {/* key remounts the native Expo view each angle so ARKit view binding stays in sync after stop/start */}
+      <VelaFaceTrackerView key={currentAngle} style={StyleSheet.absoluteFill} />
 
       <AlignmentOverlay
         isReady={!!trackingState?.isReady}
-        hasFace={!!trackingState?.isFaceDetected}
+        hasFace={hasFace}
+        holdProgress={holdProgress}
         reduceMotion={reduceMotion}
       />
 
-      <View style={styles.topBar}>
-        <CheckIndicators distanceOk={distanceOk} lightOk={lightOk} alignmentOk={alignmentOk} />
-        {hint ? (
+      <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
+        <View style={{ marginBottom: Spacing.sm }}>
+          <Headline tone="inverse" style={{ textAlign: 'center' }}>
+            {ANGLE_TITLE[currentAngle]}
+          </Headline>
+          <Caption tone="inverse" style={{ textAlign: 'center', marginTop: Spacing.xs, opacity: 0.88 }}>
+            {ANGLE_SUBTITLE[currentAngle]}
+          </Caption>
+        </View>
+        <CheckIndicators
+          distanceOk={distanceOk}
+          lightOk={lightOk}
+          alignmentOk={alignmentOk}
+          expressionOk={expressionOk}
+        />
+        {instruction ? (
           <Body
             tone="inverse"
-            style={{ textAlign: 'center', marginTop: Spacing.sm }}
+            style={{ textAlign: 'center', marginTop: Spacing.sm, maxWidth: 320, alignSelf: 'center' }}
             accessibilityLiveRegion="polite"
           >
-            {hint}
+            {instruction}
           </Body>
         ) : null}
       </View>
 
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
         <AngleProgress current={currentAngle} captured={captured} />
         <View style={{ alignItems: 'center', marginTop: Spacing.lg }}>
           <ShutterButton
             isReady={!!trackingState?.isReady && !isProcessing}
+            holdProgress={holdProgress}
             onCapture={onCapture}
             reduceMotion={reduceMotion}
           />
@@ -220,9 +311,9 @@ export default function CaptureScreen() {
         ) : null}
       </View>
 
-      {/* Cancel returns to dashboard on weekly scans, or onboarding for baseline. */}
-      <View style={styles.cancel}>
-        <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
+      {/* Cancel: baseline enters via replace — no stack to pop; use explicit routes. */}
+      <View style={[styles.cancel, { top: insets.top + Spacing.xs }]}>
+        <Button label="Cancel" variant="ghost" onPress={exitCapture} />
       </View>
     </View>
   );
@@ -232,16 +323,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   topBar: {
     position: 'absolute',
-    top: 60,
+    top: 0,
     left: 0,
     right: 0,
     paddingHorizontal: Spacing.lg,
   },
   bottomBar: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 0,
     left: 0,
     right: 0,
   },
-  cancel: { position: 'absolute', top: 16, right: 16 },
+  cancel: { position: 'absolute', right: Spacing.sm },
 });

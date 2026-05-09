@@ -1,5 +1,5 @@
 # Maestro E2E flow — Day 7 trial forecast (file 41).
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
     arguments:

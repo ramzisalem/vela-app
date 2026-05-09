@@ -23,6 +23,7 @@ public class VelaFaceTrackerView: ExpoView {
         scnView.automaticallyUpdatesLighting = true
         scnView.autoenablesDefaultLighting = false
         scnView.backgroundColor = .clear
+        scnView.rendersContinuously = true
 
         FaceTrackingSession.shared.bindARView(scnView)
     }

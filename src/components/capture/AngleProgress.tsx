@@ -6,7 +6,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { Caption } from '@/components/ui/Text';
 import { useColors } from '@/theme/ThemeContext';
-import { Spacing } from '@/theme/spacing';
+import { Radii, Spacing } from '@/theme/spacing';
 
 const ORDER = ['front', 'left_turn', 'right_turn'] as const;
 const LABELS: Record<(typeof ORDER)[number], string> = {
@@ -23,7 +23,18 @@ export interface AngleProgressProps {
 export function AngleProgress({ current, captured }: AngleProgressProps) {
   const colors = useColors();
   return (
-    <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Spacing.lg }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: Spacing.lg,
+        alignSelf: 'center',
+        paddingVertical: Spacing.sm,
+        paddingHorizontal: Spacing.lg,
+        borderRadius: Radii.lg,
+        backgroundColor: 'rgba(0,0,0,0.22)',
+      }}
+    >
       {ORDER.map((angle) => {
         const isDone = captured.includes(angle);
         const isCurrent = angle === current;

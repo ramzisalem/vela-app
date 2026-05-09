@@ -75,8 +75,12 @@ public class VelaFaceTrackerModule: Module {
         }
 
         // Per-frame metric stream (file 05). 10Hz throttle handled in Swift.
+        // Pause only — full `stop()` would end tracking until the capture screen unmounts; users would see "no face" forever after returning from multitasking.
         OnAppEntersBackground {
-            FaceTrackingSession.shared.stop()
+            FaceTrackingSession.shared.pauseForAppBackground()
+        }
+        OnAppEntersForeground {
+            FaceTrackingSession.shared.resumeAfterAppForeground()
         }
 
         View(VelaFaceTrackerView.self) {

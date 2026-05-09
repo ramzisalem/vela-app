@@ -1627,6 +1627,8 @@ PODS:
     - Singular-SDK/Main (= 12.10.1)
   - Singular-SDK/Main (12.10.1)
   - SocketRocket (0.7.0)
+  - VelaFaceTracker (1.0.0):
+    - ExpoModulesCore
   - WatermelonDB (0.27.1):
     - React
     - simdjson
@@ -1738,6 +1740,7 @@ DEPENDENCIES:
   - RNSVG (from `../node_modules/react-native-svg`)
   - "simdjson (from `../node_modules/@nozbe/simdjson`)"
   - Singular-React-Native (from `../node_modules/singular-react-native`)
+  - VelaFaceTracker (from `../modules/vela-face-tracker/ios`)
   - "WatermelonDB (from `../node_modules/@nozbe/watermelondb`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -1952,6 +1955,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@nozbe/simdjson"
   Singular-React-Native:
     :path: "../node_modules/singular-react-native"
+  VelaFaceTracker:
+    :path: "../modules/vela-face-tracker/ios"
   WatermelonDB:
     :path: "../node_modules/@nozbe/watermelondb"
   Yoga:
@@ -2065,10 +2070,11 @@ SPEC CHECKSUMS:
   Singular-React-Native: 0d789c9d8a61aaf9b528087aec461f5bcbd6cdec
   Singular-SDK: da137899bdd8bd98d79d57d31fef26b8579dbe99
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
+  VelaFaceTracker: 69fd36548de0b67a0e25d7014ef5fe8ccbab8bd3
   WatermelonDB: 358332faedb8dd4aa699a178e308586e4e3a8b23
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 0ed7d21b04b94eb85cc2dd037e0f354826551167
+PODFILE CHECKSUM: 1765f844b8d6ff6a8ba371498bfdf3270ca4609c
 
 COCOAPODS: 1.16.2

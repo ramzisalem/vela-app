@@ -1,9 +1,9 @@
 # Maestro E2E — Treatment side-effect + doctor export (v1.5, file 34).
 #
-# Use EAS **test** build (`com.velapp.vela.dev`). Set scenario at compile time:
+# Use EAS **test** build (`com.velapp.vela`). Set scenario at compile time:
 #   EXPO_PUBLIC_MOCK_USER_SCENARIO=true_with_treatment
 # (see Docs/REVIEW_PHASE_A_INVENTORY.md). launchApp.arguments do not set Expo JS env.
-appId: com.velapp.vela.dev
+appId: com.velapp.vela
 ---
 - launchApp:
 

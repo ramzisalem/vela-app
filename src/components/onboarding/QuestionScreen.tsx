@@ -2,29 +2,115 @@
  * QuestionScreen — renders a single onboarding question.
  *
  * Behavior:
+ *   - Required single `select`: no Continue bar; choosing an option saves and advances.
+ *   - Optional `select`: Continue remains so the step can be skipped without a choice.
  *   - Multi-select honors `maxSelections` (file 07 — Q10/Q12).
- *   - Required questions disable Continue until valid.
+ *   - Required questions disable Continue until valid (non-select types).
+ *   - Header fades down into the list; sticky footer fades up from the top into the list.
+ *   - Each step re-keys header, body, and footer with staggered entrance (respects Reduce Motion).
+ *   - Select / multiselect option rows enter one after another (staggered).
+ *   - Live “delight” panel for some answers (age, multiselect, etc.) plus optional celebration line before auto-advance select.
  *   - Forbidden words are intentionally absent in question wording.
  *   - All answers are saved to onboardingStore on every change.
  */
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
-import { Body, Headline, Caption } from '@/components/ui/Text';
+import React, { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  View,
+  useWindowDimensions,
+  type AccessibilityRole,
+} from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { AnimationDuration } from '@/theme/animations';
+import { Body, Headline, Caption, SectionMarker, Text } from '@/components/ui/Text';
+import { AgeScrollList } from '@/components/onboarding/AgeScrollList';
+import { QuestionLiveDelight } from '@/components/onboarding/QuestionLiveDelight';
+import { SelectionCelebration } from '@/components/onboarding/SelectionCelebration';
+import { OnboardingProgressBar } from '@/components/onboarding/OnboardingProgressBar';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Card } from '@/components/ui/Card';
-import { useColors } from '@/theme/ThemeContext';
+import { useColors, useThemeMode } from '@/theme/ThemeContext';
+import { getShadow } from '@/theme/shadows';
 import { Radii, Spacing, Layout } from '@/theme/spacing';
 import type { Question } from '@/core/onboarding/questions';
+import { onboardingOptionIcon } from '@/core/onboarding/optionIcons';
+import { getSelectOptionCelebration } from '@/core/onboarding/delightContent';
+
+/** Taller tap targets for select / multiselect options (file 07). */
+const OPTION_ROW_MIN_HEIGHT = 68;
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+/** Scroll padding so the last option clears the sticky Continue bar (`xl` height + chrome). */
+const STICKY_FOOTER_SCROLL_PAD = 140;
+/** Bottom padding when there is no sticky footer (single-select auto-advance). */
+const SELECT_SCROLL_BOTTOM_PAD = Spacing.xxxl;
+/** Height of fade from header surface into transparent so list content blends underneath. */
+const HEADER_BOTTOM_FADE = Spacing.xxxl;
+/** Footer: fade from transparent at top into surface (mirror of header). */
+const FOOTER_TOP_FADE = HEADER_BOTTOM_FADE;
+/** Space below the question block + above scroll content (tight to options). */
+const QUESTION_TO_OPTIONS_GAP = Spacing.md;
+
+function gradientFadeColors(surface: string): readonly [string, string] {
+  if (surface.startsWith('#') && surface.length === 7) {
+    return [surface, `${surface}00`] as const;
+  }
+  return [surface, 'transparent'] as const;
+}
+
+function gradientFadeColorsFromTop(surface: string): readonly [string, string] {
+  if (surface.startsWith('#') && surface.length === 7) {
+    return [`${surface}00`, surface] as const;
+  }
+  return ['transparent', surface] as const;
+}
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced);
+    return () => sub.remove();
+  }, []);
+  return reduced;
+}
+
+const stepEnterDuration = AnimationDuration.base;
+const bodyEnterDelay = 48;
+const footerEnterDelay = 96;
+/** Delay between each option row entrance (select / multiselect). */
+const OPTION_STAGGER_MS = 52;
+const OPTION_ROW_ENTER_DURATION = 280;
+
+function optionStaggerEntering(index: number, reduceMotion: boolean) {
+  if (reduceMotion) return undefined;
+  return FadeInDown.duration(OPTION_ROW_ENTER_DURATION).delay(index * OPTION_STAGGER_MS);
+}
 
 export interface QuestionScreenProps {
   question: Question;
   value: unknown;
   onChange: (value: unknown) => void;
   onContinue: () => void;
-  /** "3 of 30" indicator in the header. */
-  progressLabel: string;
+  globalStep: number;
+  globalTotal: number;
+  /** Section chapter title (file 07). */
+  sectionTitle: string;
+  /** One-line why this section matters. */
+  sectionPromise: string;
+  stepInSection: number;
+  stepsInSection: number;
   onBack?: () => void;
+  /**
+   * Optional chip from scan metrics (non-diagnostic hint). Applying sets answer via parent.
+   */
+  scanSuggestion?: { summary: string; onApply: () => void };
 }
 
 function isAnswerValid(question: Question, value: unknown): boolean {
@@ -48,74 +134,264 @@ export function QuestionScreen({
   value,
   onChange,
   onContinue,
-  progressLabel,
+  globalStep,
+  globalTotal,
+  sectionTitle,
+  sectionPromise,
+  stepInSection,
+  stepsInSection,
   onBack,
+  scanSuggestion,
 }: QuestionScreenProps) {
   const colors = useColors();
+  const { width: windowWidth } = useWindowDimensions();
   const valid = useMemo(() => isAnswerValid(question, value), [question, value]);
+  const useAgeScrollList = question.type === 'number' && question.id === 'q2_age';
+  const showStickyContinue = question.type !== 'select' || !question.required;
+  const scrollBottomPad = showStickyContinue
+    ? STICKY_FOOTER_SCROLL_PAD + FOOTER_TOP_FADE
+    : SELECT_SCROLL_BOTTOM_PAD;
+
+  const fadeColors = gradientFadeColors(colors.background.secondary);
+  const footerFadeColors = gradientFadeColorsFromTop(colors.background.secondary);
+  const reduceMotion = usePrefersReducedMotion();
+  const headerEntering = reduceMotion
+    ? undefined
+    : FadeInDown.duration(stepEnterDuration);
+  const bodyEntering = reduceMotion
+    ? undefined
+    : FadeInDown.duration(stepEnterDuration).delay(bodyEnterDelay);
+  const footerEntering = reduceMotion
+    ? undefined
+    : FadeIn.duration(stepEnterDuration).delay(footerEnterDelay);
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingTop: Spacing.lg, paddingBottom: Spacing.base }}>
-        <Caption tone="secondary">{progressLabel}</Caption>
-        <Headline style={{ marginTop: Spacing.sm }}>{question.title}</Headline>
-        {question.subtitle ? (
-          <Body tone="secondary" style={{ marginTop: Spacing.sm }}>
-            {question.subtitle}
-          </Body>
-        ) : null}
+      <View
+        style={{
+          flexShrink: 0,
+          paddingTop: onBack ? Spacing.sm : Spacing.xl,
+          backgroundColor: colors.background.secondary,
+          position: 'relative',
+          zIndex: 2,
+        }}
+      >
+        <Animated.View
+          key={`step-header-${question.id}`}
+          entering={headerEntering}
+          style={{ width: '100%' }}
+        >
+          {onBack ? (
+            <Pressable
+              onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onBack();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={16}
+              style={{
+                width: Layout.tapTarget,
+                height: Layout.tapTarget,
+                marginBottom: Spacing.sm,
+                justifyContent: 'center',
+                marginLeft: -Spacing.xs,
+              }}
+            >
+              <Ionicons name="chevron-back" size={30} color={colors.text.primary} />
+            </Pressable>
+          ) : null}
+          <View style={{ paddingBottom: Spacing.sm }}>
+            <OnboardingProgressBar step={globalStep} total={globalTotal} />
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: Spacing.sm,
+                gap: Spacing.md,
+              }}
+            >
+              <SectionMarker tone="secondary" style={{ flex: 1, minWidth: 0 }}>
+                {sectionTitle}
+              </SectionMarker>
+              <Text variant="mono" tone="tertiary">
+                {`${globalStep}/${globalTotal}`}
+              </Text>
+            </View>
+            {stepInSection === 1 ? (
+              <Caption tone="tertiary" style={{ marginTop: Spacing.xs }}>
+                {sectionPromise}
+              </Caption>
+            ) : null}
+            <View style={{ marginBottom: QUESTION_TO_OPTIONS_GAP }}>
+              <Headline
+                style={{
+                  marginTop: stepInSection === 1 ? Spacing.md : Spacing.sm,
+                  fontSize: 24,
+                  lineHeight: 30,
+                }}
+              >
+                {question.title}
+              </Headline>
+              {question.subtitle ? (
+                <Body tone="secondary" style={{ marginTop: Spacing.sm }}>
+                  {question.subtitle}
+                </Body>
+              ) : null}
+              {question.trustLine ? (
+                <Caption tone="tertiary" style={{ marginTop: Spacing.xs }}>
+                  {question.trustLine}
+                </Caption>
+              ) : null}
+              {scanSuggestion ? (
+                <View style={{ marginTop: Spacing.md }}>
+                  <Caption tone="tertiary" style={{ marginBottom: Spacing.xs }}>
+                    Suggested from your scan numbers — tap to use or pick something else.
+                  </Caption>
+                  <Button
+                    label={scanSuggestion.summary}
+                    variant="secondary"
+                    size="md"
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      scanSuggestion.onApply();
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+            <QuestionLiveDelight question={question} value={value} />
+          </View>
+        </Animated.View>
+        <LinearGradient
+          pointerEvents="none"
+          colors={fadeColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: -HEADER_BOTTOM_FADE,
+            height: HEADER_BOTTOM_FADE,
+          }}
+        />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: Spacing.xxl }}
-        keyboardShouldPersistTaps="handled"
+      <Animated.View
+        key={`step-body-${question.id}`}
+        entering={bodyEntering}
+        style={{ flex: 1, minHeight: 0, marginTop: -HEADER_BOTTOM_FADE, zIndex: 0 }}
       >
-        {question.type === 'select' ? (
-          <SelectAnswers question={question} value={value as string} onChange={onChange} />
-        ) : question.type === 'multiselect' ? (
-          <MultiSelectAnswers
-            question={question}
-            value={(value as string[]) ?? []}
-            onChange={onChange}
-          />
-        ) : question.type === 'number' ? (
-          <NumberAnswer
-            question={question}
+        {useAgeScrollList ? (
+          <AgeScrollList
+            min={question.min ?? 13}
+            max={question.max ?? 100}
             value={value as number | undefined}
-            onChange={onChange}
-          />
-        ) : question.type === 'text' ? (
-          <TextAnswer
-            question={question}
-            value={(value as string) ?? ''}
-            onChange={onChange}
+            onChange={(n) => onChange(n)}
+            bottomContentInset={scrollBottomPad}
+            headerBottomFade={HEADER_BOTTOM_FADE}
           />
         ) : (
-          <TimeAnswer
-            value={(value as { hour: number; minute: number }) ?? { hour: 9, minute: 0 }}
-            onChange={onChange}
-          />
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingTop: QUESTION_TO_OPTIONS_GAP + HEADER_BOTTOM_FADE,
+              paddingBottom: scrollBottomPad,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {question.type === 'select' ? (
+              <SelectAnswers
+                question={question}
+                value={value as string}
+                onChange={onChange}
+                onPickComplete={onContinue}
+                reduceMotion={reduceMotion}
+              />
+            ) : question.type === 'multiselect' ? (
+              <MultiSelectAnswers
+                question={question}
+                value={(value as string[]) ?? []}
+                onChange={onChange}
+                reduceMotion={reduceMotion}
+              />
+            ) : question.type === 'number' ? (
+              <NumberAnswer
+                question={question}
+                value={value as number | undefined}
+                onChange={onChange}
+              />
+            ) : question.type === 'text' ? (
+              <TextAnswer
+                question={question}
+                value={(value as string) ?? ''}
+                onChange={onChange}
+              />
+            ) : (
+              <TimeAnswer
+                value={(value as { hour: number; minute: number }) ?? { hour: 9, minute: 0 }}
+                onChange={onChange}
+              />
+            )}
+          </ScrollView>
         )}
-      </ScrollView>
+      </Animated.View>
 
-      <View style={{ flexDirection: 'row', gap: Spacing.sm, paddingBottom: Spacing.xl }}>
-        {onBack ? <Button label="Back" variant="ghost" onPress={onBack} /> : null}
-        <View style={{ flex: 1 }}>
-          <Button
-            label="Continue"
-            fullWidth
-            disabled={!valid}
-            onPress={onContinue}
-            accessibilityHint={
-              valid ? 'Saves your answer and moves to the next question' : 'Pick an option to continue'
-            }
+      {showStickyContinue ? (
+        <Animated.View
+          key={`step-footer-${question.id}`}
+          entering={footerEntering}
+          style={{
+            flexShrink: 0,
+            /** Full window width + negative inset so the bar is not clipped or shifted inside padded `Screen`. */
+            width: windowWidth,
+            alignSelf: 'flex-start',
+            marginStart: -Layout.screenInset,
+            marginTop: -FOOTER_TOP_FADE,
+            /** No solid fill on the shell — top gradient stays transparent over the list (same idea as the header). */
+            backgroundColor: 'transparent',
+            position: 'relative',
+            zIndex: 2,
+          }}
+        >
+          <LinearGradient
+            pointerEvents="none"
+            colors={footerFadeColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              height: FOOTER_TOP_FADE,
+            }}
           />
-        </View>
-      </View>
-      {!valid && question.required ? (
-        <Caption tone="secondary" style={{ marginBottom: Spacing.sm, color: colors.text.tertiary }}>
-          This one is required.
-        </Caption>
+          <View
+            style={{
+              width: '100%',
+              marginTop: FOOTER_TOP_FADE,
+              paddingTop: Spacing.sm,
+              paddingBottom: Spacing.sm,
+              paddingHorizontal: Spacing.md,
+              backgroundColor: colors.background.secondary,
+            }}
+          >
+            <Button
+              label="Continue"
+              size="xl"
+              fullWidth
+              disabled={!valid}
+              onPress={onContinue}
+              accessibilityHint={
+                valid ? 'Saves your answer and moves to the next question' : 'Pick an option to continue'
+              }
+            />
+          </View>
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -126,35 +402,80 @@ function OptionRow({
   helper,
   selected,
   onPress,
+  accessibilityRole,
+  iconName,
 }: {
   label: string;
   helper?: string;
   selected: boolean;
   onPress: () => void;
+  accessibilityRole: AccessibilityRole;
+  /** When null/undefined, the row is text-only (e.g. ethnicity, abstract scales). */
+  iconName?: IoniconName | null;
 }) {
   const colors = useColors();
+  const mode = useThemeMode();
+  const handlePress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onPress();
+  };
+
   return (
     <Pressable
-      onPress={onPress}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
-      style={{ marginBottom: Spacing.sm }}
+      onPress={handlePress}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={{ checked: selected, selected }}
+      style={{ marginBottom: Spacing.lg }}
     >
       <View
         style={{
-          padding: Spacing.base,
-          borderRadius: Radii.md,
-          borderWidth: Layout.hairline,
-          borderColor: selected ? colors.border.accent : colors.border.default,
-          backgroundColor: selected ? colors.accent.background : colors.surface.raised,
+          minHeight: OPTION_ROW_MIN_HEIGHT,
+          paddingVertical: Spacing.lg,
+          paddingHorizontal: Spacing.lg,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Spacing.md,
+          borderRadius: Radii.lg,
+          borderWidth: selected ? 1 : Layout.hairline,
+          borderColor: selected ? colors.border.accent : colors.border.subtle,
+          backgroundColor: selected ? colors.accent.background : colors.background.tertiary,
+          ...(selected ? getShadow('soft', mode) : getShadow('none', mode)),
         }}
       >
-        <Body tone={selected ? 'accent' : 'primary'}>{label}</Body>
-        {helper ? (
-          <Caption tone="secondary" style={{ marginTop: Spacing.xxs }}>
-            {helper}
-          </Caption>
+        {iconName ? (
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: Radii.pill,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.surface.raised,
+              borderWidth: Layout.hairline,
+              borderColor: selected ? colors.border.accent : colors.border.subtle,
+            }}
+          >
+            <Ionicons
+              name={iconName}
+              size={24}
+              color={selected ? colors.accent.default : colors.text.secondary}
+            />
+          </View>
         ) : null}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Body
+            tone={selected ? 'accent' : 'primary'}
+            variant="bodyEmphasis"
+            style={{ fontSize: 18, lineHeight: 24 }}
+          >
+            {label}
+          </Body>
+          {helper ? (
+            <Caption tone="secondary" style={{ marginTop: Spacing.xs }}>
+              {helper}
+            </Caption>
+          ) : null}
+        </View>
       </View>
     </Pressable>
   );
@@ -164,21 +485,62 @@ function SelectAnswers({
   question,
   value,
   onChange,
+  onPickComplete,
+  reduceMotion,
 }: {
   question: Extract<Question, { type: 'select' }>;
   value?: string;
   onChange: (v: string) => void;
+  onPickComplete: () => void;
+  reduceMotion: boolean;
 }) {
+  const [celebration, setCelebration] = React.useState<string | null>(null);
+  const advanceTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(
+    () => () => {
+      if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    },
+    [],
+  );
+
+  const scheduleAdvance = (line: string | null) => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    if (line && !reduceMotion) {
+      setCelebration(line);
+      advanceTimerRef.current = setTimeout(() => {
+        advanceTimerRef.current = null;
+        setCelebration(null);
+        onPickComplete();
+      }, 420);
+    } else {
+      setCelebration(null);
+      onPickComplete();
+    }
+  };
+
   return (
     <>
-      {question.options.map((opt) => (
-        <OptionRow
+      {celebration ? <SelectionCelebration text={celebration} /> : null}
+      {question.options.map((opt, index) => (
+        <Animated.View
           key={opt.value}
-          label={opt.label}
-          helper={opt.helper}
-          selected={value === opt.value}
-          onPress={() => onChange(opt.value)}
-        />
+          entering={optionStaggerEntering(index, reduceMotion)}
+          style={{ width: '100%' }}
+        >
+          <OptionRow
+            label={opt.label}
+            helper={opt.helper}
+            selected={value === opt.value}
+            onPress={() => {
+              if (value === opt.value) return;
+              onChange(opt.value);
+              scheduleAdvance(getSelectOptionCelebration(question.id, opt.value));
+            }}
+            accessibilityRole="radio"
+            iconName={onboardingOptionIcon(question.id, opt.value)}
+          />
+        </Animated.View>
       ))}
     </>
   );
@@ -188,40 +550,54 @@ function MultiSelectAnswers({
   question,
   value,
   onChange,
+  reduceMotion,
 }: {
   question: Extract<Question, { type: 'multiselect' }>;
   value: string[];
   onChange: (v: string[]) => void;
+  reduceMotion: boolean;
 }) {
+  const n = question.options.length;
   return (
     <>
-      {question.options.map((opt) => {
+      {question.options.map((opt, index) => {
         const selected = value.includes(opt.value);
         const max = question.maxSelections;
         const handle = () => {
           if (selected) {
             onChange(value.filter((v) => v !== opt.value));
           } else if (max && value.length >= max) {
-            // Replace oldest selection.
             onChange([...value.slice(1), opt.value]);
           } else {
             onChange([...value, opt.value]);
           }
         };
         return (
-          <OptionRow
+          <Animated.View
             key={opt.value}
-            label={opt.label}
-            helper={opt.helper}
-            selected={selected}
-            onPress={handle}
-          />
+            entering={optionStaggerEntering(index, reduceMotion)}
+            style={{ width: '100%' }}
+          >
+            <OptionRow
+              label={opt.label}
+              helper={opt.helper}
+              selected={selected}
+              onPress={handle}
+              accessibilityRole="checkbox"
+              iconName={onboardingOptionIcon(question.id, opt.value)}
+            />
+          </Animated.View>
         );
       })}
       {question.maxSelections ? (
-        <Caption tone="secondary" style={{ marginTop: Spacing.xs }}>
-          {`Up to ${question.maxSelections}.`}
-        </Caption>
+        <Animated.View
+          entering={optionStaggerEntering(n, reduceMotion)}
+          style={{ width: '100%' }}
+        >
+          <Caption tone="secondary" style={{ marginTop: Spacing.xs }}>
+            {`Up to ${question.maxSelections}.`}
+          </Caption>
+        </Animated.View>
       ) : null}
     </>
   );
@@ -237,7 +613,7 @@ function NumberAnswer({
   onChange: (n: number | undefined) => void;
 }) {
   return (
-    <Card>
+    <Card shadow="soft">
       <TextField
         keyboardType="number-pad"
         placeholder={question.units ?? ''}
@@ -262,7 +638,7 @@ function TextAnswer({
   onChange: (s: string) => void;
 }) {
   return (
-    <Card>
+    <Card shadow="soft">
       <TextField
         multiline={question.multiline}
         maxLength={question.maxLength}
@@ -280,35 +656,42 @@ function TimeAnswer({
   value: { hour: number; minute: number };
   onChange: (v: { hour: number; minute: number }) => void;
 }) {
-  // Simple grid picker — full DateTimePicker hooked up later.
   const hours = [7, 8, 9, 10, 18, 19, 20, 21];
   const minutes: ReadonlyArray<0 | 15 | 30 | 45> = [0, 15, 30, 45];
   return (
-    <View>
-      <Caption>Hour</Caption>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }}>
-        {hours.map((h) => (
-          <Button
-            key={h}
-            label={`${h}:00`}
-            size="sm"
-            variant={value.hour === h ? 'primary' : 'secondary'}
-            onPress={() => onChange({ hour: h, minute: value.minute })}
-          />
-        ))}
-      </View>
-      <Caption style={{ marginTop: Spacing.base }}>Minutes</Caption>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }}>
-        {minutes.map((m) => (
-          <Button
-            key={m}
-            label={`:${String(m).padStart(2, '0')}`}
-            size="sm"
-            variant={value.minute === m ? 'primary' : 'secondary'}
-            onPress={() => onChange({ hour: value.hour, minute: m })}
-          />
-        ))}
-      </View>
+    <View style={{ gap: Spacing.md }}>
+      <Card shadow="soft" padding="base">
+        <Caption tone="tertiary" style={{ marginBottom: Spacing.sm }}>
+          hour
+        </Caption>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }}>
+          {hours.map((h) => (
+            <Button
+              key={h}
+              label={`${h}:00`}
+              size="sm"
+              variant={value.hour === h ? 'primary' : 'secondary'}
+              onPress={() => onChange({ hour: h, minute: value.minute })}
+            />
+          ))}
+        </View>
+      </Card>
+      <Card shadow="soft" padding="base">
+        <Caption tone="tertiary" style={{ marginBottom: Spacing.sm }}>
+          minutes
+        </Caption>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs }}>
+          {minutes.map((m) => (
+            <Button
+              key={m}
+              label={`:${String(m).padStart(2, '0')}`}
+              size="sm"
+              variant={value.minute === m ? 'primary' : 'secondary'}
+              onPress={() => onChange({ hour: value.hour, minute: m })}
+            />
+          ))}
+        </View>
+      </Card>
     </View>
   );
 }
