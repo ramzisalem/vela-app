@@ -1,16 +1,18 @@
 /**
- * Brand gradients (file 15). VelaPrimary is fixed at 135°. The light gradient
- * is for light mode buttons; the dark gradient (deeper hues) is for dark mode
- * buttons.
+ * Brand gradients (file 15). VelaPrimary is fixed at 135°.
  *
- * Use VelaPrimary ONLY for: primary CTAs, active toggles, done states, brand
- * accents (sparingly). Forbidden on: card backgrounds, body text, sub-score
- * dots, status colors.
+ * Obsidian & Copper edition: the gradient is a copper specular ramp
+ * (light copper → signature copper → deep copper / bronze) — reads like
+ * the bezel of a luxury watch. The light gradient is for light mode;
+ * the dark gradient pushes the mid-stop deeper for OLED black.
  *
- * Note on contrast: white text on the soft VelaPrimary stops doesn't meet
- * strict WCAG 4.5:1 across the mauve middle. The brand-locked design accepts
- * 2.4:1+ on this single pairing as an editorial exception (button text only,
- * font-weight 500+ at >= 16pt). Verified via scripts/checkContrast.ts.
+ * Use VelaPrimary ONLY for: hero score reveal, primary commercial CTAs
+ * (welcome "Begin", paywall "Unlock"), the wordmark mask. Forbidden on:
+ * card backgrounds, body text, sub-score dots, status colors, in-flow
+ * navigation CTAs (those use the flat obsidian `Button variant="dark"`).
+ *
+ * Contrast: white text on the saturated mid copper stop (`#C77F4A`)
+ * meets WCAG ~3.4:1 at >= 16pt SemiBold — acceptable for button labels.
  */
 import { Palette } from './palette';
 
@@ -55,9 +57,9 @@ export const VelaPrimarySoft: ThemedGradient = {
   },
 };
 
-/** Cream radial wash for the page background (light mode only). */
+/** Warm-paper radial wash for the score-reveal page background (light mode only). */
 export const CreamWash = {
-  light: ['#F1E8DA', '#F5EFE5', Palette.cream50] as const,
+  light: ['#F1EBDE', '#F6F1E8', Palette.cream50] as const,
 };
 
 /** Helper for `expo-linear-gradient`. */

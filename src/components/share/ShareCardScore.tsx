@@ -26,7 +26,7 @@ export function ShareCardScore({ scan }: ShareCardScoreProps) {
       style={{
         width: SHARE_CARD_SIZE.width,
         height: SHARE_CARD_SIZE.height,
-        backgroundColor: '#FAF6EE',
+        backgroundColor: '#FAF8F4', // canvas (Obsidian & Copper)
       }}
     >
       <LinearGradient

@@ -6,8 +6,14 @@
 // Capture-ready debounce: >= 0.5s of all checks passing simultaneously.
 // Distance gate: 0.25m..0.55m. Light intensity: minimumLightIntensity (default 300 lux for indoor).
 // Neutral expression: blend-shape caps (slightly relaxed vs v1 strict).
-// Pose tolerances per angle (file 04): gates use **geometry** vs camera (heading, planar turn, tilt),
-// not Euler alone — front-camera Euler is a poor fit for “Pose” UX. Values in payload `rotation` stay Euler for scoring.
+// Pose tolerances per angle (file 04): gates use **geometry** vs camera — front-camera Euler is a
+// poor fit for "Pose" UX because face +Z faces opposite to camera +Z, giving Euler ≈ π at the
+// "correct" pose. We compute three independent geometric scalars:
+//   • yaw    — heading angle between face-forward and toward-camera ray
+//   • pitch  — face-forward's up/down tilt within the camera's vertical plane
+//   • roll   — head-cock angle around the toward-camera axis
+// Each gates its own indicator; nothing is double-derived. Euler values still land in `rotation`
+// for scoring/analytics, but are not used to drive the UI.
 
 import ARKit
 import SceneKit
@@ -285,13 +291,26 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
             return v / l
         }()
 
-        let tilt = planarTiltMisalignmentRad(
+        // Roll: how much the head is cocked around the camera-axis (independent of pitch).
+        // Measures the angle between face-up and camera-up after projecting both onto the
+        // plane perpendicular to the toward-camera ray. Was previously called `tilt` and
+        // ALSO reused as pitch — a single scalar gating two indicators. Now split.
+        let rollMag = planarTiltMisalignmentRad(
             faceTransform: transform,
             towardCam: towardCamUnit,
             cameraTransform: cameraTransform,
         )
-        let pitchOk = tilt <= 0.72
-        let rollOk = tilt <= 0.82
+        let rollOk = rollMag <= 0.55  // ~31° — a real head-cock should fail; small wobble passes.
+
+        // Pitch: how much the head is tilted up/down relative to the toward-camera ray.
+        // Measured as the angle between face-forward (out nose) and the toward-cam direction,
+        // projected onto the camera's vertical plane (plane spanned by toward-cam and cam-up).
+        let pitchMag = planarPitchMisalignmentRad(
+            faceTransform: transform,
+            towardCam: towardCamUnit,
+            cameraTransform: cameraTransform,
+        )
+        let pitchOk = pitchMag <= 0.55  // ~31°
 
         let yawOk: Bool
         switch currentAngle {
@@ -485,6 +504,42 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
         let si = simd_dot(cr, camUp)
         let co = simd_dot(cf, hf)
         return atan2(si, co)
+    }
+
+    /// Pitch misalignment (rad): how far face-forward tilts up/down relative to the
+    /// toward-camera ray, measured in the camera's vertical plane. Independent of roll
+    /// (the rotation around the toward-cam axis), so this and `planarTiltMisalignmentRad`
+    /// together give two non-redundant gates for the pose indicator.
+    ///
+    /// 0 rad = face-forward and toward-cam line up vertically (looking straight at camera).
+    private func planarPitchMisalignmentRad(
+        faceTransform: simd_float4x4,
+        towardCam: SIMD3<Float>,
+        cameraTransform: simd_float4x4,
+    ) -> Float {
+        // Build the camera's vertical plane basis: toward-cam ray + a "vertical" axis that
+        // is camera-up projected perpendicular to toward-cam.
+        let camUp = simd_normalize(simd_make_float3(cameraTransform.columns.1))
+        var vert = camUp - simd_dot(camUp, towardCam) * towardCam
+        if simd_length_squared(vert) < 1e-10 {
+            return 0
+        }
+        vert = simd_normalize(vert)
+
+        // Face forward axis (out of nose), with sign auto-chosen as in the heading helper.
+        let c2 = simd_make_float3(faceTransform.columns.2)
+        let n2 = simd_normalize(c2)
+        let faceFwd = simd_dot(n2, towardCam) >= simd_dot(-n2, towardCam) ? n2 : -n2
+
+        // Project face-forward into the vertical plane (axes: towardCam, vert), then
+        // measure its tilt away from the toward-cam axis inside that plane.
+        let along = simd_dot(faceFwd, towardCam)        // forward-back component
+        let upDown = simd_dot(faceFwd, vert)            // up/down component
+        // If both are ~0 (degenerate), say "no pitch".
+        if abs(along) + abs(upDown) < 1e-6 {
+            return 0
+        }
+        return abs(atan2(upDown, along))
     }
 
     /// How far face “up” diverges from level with preview, in radians (camera-up projected ⟂ toward-subject ray).

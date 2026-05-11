@@ -160,6 +160,7 @@ export default function QuestionsScreen() {
         sectionPromise={sectionMeta.promise}
         stepInSection={stepInSection}
         stepsInSection={sectionPeers.length}
+        section={question.section}
         scanSuggestion={scanSuggestion}
       />
     </Screen>

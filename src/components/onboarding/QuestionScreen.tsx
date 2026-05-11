@@ -27,11 +27,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { AnimationDuration } from '@/theme/animations';
-import { Body, Headline, Caption, SectionMarker, Text } from '@/components/ui/Text';
+import { Body, Caption, Text } from '@/components/ui/Text';
 import { AgeScrollList } from '@/components/onboarding/AgeScrollList';
 import { QuestionLiveDelight } from '@/components/onboarding/QuestionLiveDelight';
 import { SelectionCelebration } from '@/components/onboarding/SelectionCelebration';
-import { OnboardingProgressBar } from '@/components/onboarding/OnboardingProgressBar';
+import { SegmentedProgress } from '@/components/onboarding/SegmentedProgress';
+import { EmphasisHeadline } from '@/components/onboarding/EmphasisHeadline';
+import { InfoCard } from '@/components/onboarding/InfoCard';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Card } from '@/components/ui/Card';
@@ -44,6 +46,44 @@ import { getSelectOptionCelebration } from '@/core/onboarding/delightContent';
 
 /** Taller tap targets for select / multiselect options (file 07). */
 const OPTION_ROW_MIN_HEIGHT = 68;
+
+/**
+ * Convert a plain question title into the LazyFit "**topic**?" pattern.
+ *   Input  : "What's your skin type?"
+ *   Output : "What's your **skin type**?"
+ *
+ * Heuristic: if the title already contains `**` we trust the author; otherwise
+ * we bold the *last* noun phrase before terminal punctuation (everything after
+ * the final occurrence of "your", "your ", "the", "a", "to", or — as a
+ * fallback — the last 1–2 words before "?", ":", or end of string).
+ */
+function toEmphasisHeadline(title: string): string {
+  if (title.includes('**')) return title;
+
+  const trimmed = title.trim();
+  const trailingPunct = /([?:.!])\s*$/.exec(trimmed);
+  const punct = trailingPunct ? trailingPunct[1] : '';
+  const body = trailingPunct ? trimmed.slice(0, trailingPunct.index).trimEnd() : trimmed;
+
+  // Try to bold the phrase after the last "your", "the", or "a".
+  const anchors = [' your ', ' the ', ' a ', ' how ', ' to '];
+  let cut = -1;
+  for (const a of anchors) {
+    const idx = body.toLowerCase().lastIndexOf(a);
+    if (idx > cut) cut = idx + a.length;
+  }
+  if (cut > 0 && cut < body.length) {
+    return `${body.slice(0, cut)}**${body.slice(cut)}**${punct}`;
+  }
+  // Fallback: bold the last two words.
+  const words = body.split(/\s+/);
+  if (words.length >= 2) {
+    const head = words.slice(0, -2).join(' ');
+    const tail = words.slice(-2).join(' ');
+    return `${head ? head + ' ' : ''}**${tail}**${punct}`;
+  }
+  return `**${body}**${punct}`;
+}
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 /** Scroll padding so the last option clears the sticky Continue bar (`xl` height + chrome). */
@@ -106,6 +146,8 @@ export interface QuestionScreenProps {
   sectionPromise: string;
   stepInSection: number;
   stepsInSection: number;
+  /** Optional A..E letter — drives segmented chapter progress. */
+  section?: 'A' | 'B' | 'C' | 'D' | 'E';
   onBack?: () => void;
   /**
    * Optional chip from scan metrics (non-diagnostic hint). Applying sets answer via parent.
@@ -140,9 +182,13 @@ export function QuestionScreen({
   sectionPromise,
   stepInSection,
   stepsInSection,
+  section,
   onBack,
   scanSuggestion,
 }: QuestionScreenProps) {
+  const SECTION_ORDER: ReadonlyArray<'A' | 'B' | 'C' | 'D' | 'E'> = ['A', 'B', 'C', 'D', 'E'];
+  const sectionIndex = section ? SECTION_ORDER.indexOf(section) : 0;
+  const numeral = ['i', 'ii', 'iii', 'iv', 'v'][Math.max(0, sectionIndex)];
   const colors = useColors();
   const { width: windowWidth } = useWindowDimensions();
   const valid = useMemo(() => isAnswerValid(question, value), [question, value]);
@@ -202,52 +248,45 @@ export function QuestionScreen({
             </Pressable>
           ) : null}
           <View style={{ paddingBottom: Spacing.sm }}>
-            <OnboardingProgressBar step={globalStep} total={globalTotal} />
+            <SegmentedProgress
+              sectionIndex={sectionIndex}
+              sectionCount={5}
+              stepInSection={stepInSection}
+              stepsInSection={stepsInSection}
+            />
             <View
               style={{
                 flexDirection: 'row',
-                justifyContent: 'space-between',
                 alignItems: 'center',
-                marginTop: Spacing.sm,
-                gap: Spacing.md,
+                justifyContent: 'center',
+                marginTop: Spacing.md,
+                gap: Spacing.sm,
               }}
             >
-              <SectionMarker tone="secondary" style={{ flex: 1, minWidth: 0 }}>
-                {sectionTitle}
-              </SectionMarker>
-              <Text variant="mono" tone="tertiary">
-                {`${globalStep}/${globalTotal}`}
+              <Text variant="label" tone="tertiary" style={{ letterSpacing: 1.4 }}>
+                {`Part ${numeral} · ${sectionTitle}`}
               </Text>
             </View>
-            {stepInSection === 1 ? (
-              <Caption tone="tertiary" style={{ marginTop: Spacing.xs }}>
-                {sectionPromise}
-              </Caption>
-            ) : null}
-            <View style={{ marginBottom: QUESTION_TO_OPTIONS_GAP }}>
-              <Headline
-                style={{
-                  marginTop: stepInSection === 1 ? Spacing.md : Spacing.sm,
-                  fontSize: 24,
-                  lineHeight: 30,
-                }}
-              >
-                {question.title}
-              </Headline>
+            <View style={{ marginBottom: QUESTION_TO_OPTIONS_GAP, marginTop: Spacing.xl, paddingHorizontal: Spacing.xs }}>
+              <EmphasisHeadline size={28}>{toEmphasisHeadline(question.title)}</EmphasisHeadline>
               {question.subtitle ? (
-                <Body tone="secondary" style={{ marginTop: Spacing.sm }}>
-                  {question.subtitle}
-                </Body>
+                <InfoCard
+                  tone="warm"
+                  body={question.subtitle}
+                  style={{ marginTop: Spacing.lg }}
+                />
               ) : null}
-              {question.trustLine ? (
-                <Caption tone="tertiary" style={{ marginTop: Spacing.xs }}>
-                  {question.trustLine}
-                </Caption>
+              {question.trustLine && !question.subtitle ? (
+                <InfoCard
+                  tone="accent"
+                  body={question.trustLine}
+                  style={{ marginTop: Spacing.lg }}
+                />
               ) : null}
               {scanSuggestion ? (
-                <View style={{ marginTop: Spacing.md }}>
+                <View style={{ marginTop: Spacing.md, alignItems: 'center' }}>
                   <Caption tone="tertiary" style={{ marginBottom: Spacing.xs }}>
-                    Suggested from your scan numbers — tap to use or pick something else.
+                    Suggested from your scan numbers
                   </Caption>
                   <Button
                     label={scanSuggestion.summary}
@@ -381,7 +420,8 @@ export function QuestionScreen({
             }}
           >
             <Button
-              label="Continue"
+              label="Next"
+              variant="dark"
               size="xl"
               fullWidth
               disabled={!valid}
@@ -425,57 +465,61 @@ function OptionRow({
       onPress={handlePress}
       accessibilityRole={accessibilityRole}
       accessibilityState={{ checked: selected, selected }}
-      style={{ marginBottom: Spacing.lg }}
+      style={{ marginBottom: Spacing.md }}
     >
       <View
         style={{
           minHeight: OPTION_ROW_MIN_HEIGHT,
-          paddingVertical: Spacing.lg,
+          paddingVertical: Spacing.md + 2,
           paddingHorizontal: Spacing.lg,
           flexDirection: 'row',
           alignItems: 'center',
           gap: Spacing.md,
           borderRadius: Radii.lg,
-          borderWidth: selected ? 1 : Layout.hairline,
-          borderColor: selected ? colors.border.accent : colors.border.subtle,
-          backgroundColor: selected ? colors.accent.background : colors.background.tertiary,
-          ...(selected ? getShadow('soft', mode) : getShadow('none', mode)),
+          borderWidth: selected ? 2 : 0,
+          borderColor: selected ? colors.accent.default : 'transparent',
+          backgroundColor: selected ? colors.accent.background : colors.surface.raised,
+          // LazyFit pattern: shadow on default state, no shadow when selected
+          ...(selected ? getShadow('none', mode) : getShadow('soft', mode)),
         }}
       >
         {iconName ? (
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: Radii.pill,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.surface.raised,
-              borderWidth: Layout.hairline,
-              borderColor: selected ? colors.border.accent : colors.border.subtle,
-            }}
-          >
-            <Ionicons
-              name={iconName}
-              size={24}
-              color={selected ? colors.accent.default : colors.text.secondary}
-            />
-          </View>
+          <Ionicons
+            name={iconName}
+            size={26}
+            color={selected ? colors.accent.default : colors.text.primary}
+          />
         ) : null}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Body
             tone={selected ? 'accent' : 'primary'}
             variant="bodyEmphasis"
-            style={{ fontSize: 18, lineHeight: 24 }}
+            style={{ fontSize: 17, lineHeight: 22, fontWeight: '600' }}
           >
             {label}
           </Body>
           {helper ? (
-            <Caption tone="secondary" style={{ marginTop: Spacing.xs }}>
+            <Caption tone="secondary" style={{ marginTop: 2 }}>
               {helper}
             </Caption>
           ) : null}
         </View>
+        {accessibilityRole === 'checkbox' ? (
+          <View
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: selected ? colors.accent.default : 'transparent',
+              borderWidth: selected ? 0 : 1.5,
+              borderColor: colors.border.strong,
+            }}
+          >
+            {selected ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+          </View>
+        ) : null}
       </View>
     </Pressable>
   );

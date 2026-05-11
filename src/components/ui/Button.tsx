@@ -33,7 +33,7 @@ import { Radii, Spacing, Layout } from '@/theme/spacing';
 import { Text } from './Text';
 import { SpringConfig, AnimationDuration } from '@/theme/animations';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'dark';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface ButtonProps {
@@ -97,7 +97,7 @@ export function Button({
   };
 
   const textTone =
-    variant === 'primary' || variant === 'destructive'
+    variant === 'primary' || variant === 'destructive' || variant === 'dark'
       ? 'inverse'
       : variant === 'ghost'
         ? 'accent'
@@ -162,7 +162,9 @@ export function Button({
       ? colors.error.default
       : variant === 'ghost'
         ? 'transparent'
-        : colors.surface.raised;
+        : variant === 'dark'
+          ? colors.text.primary // espresso/charcoal — flat CTA used during questions
+          : colors.surface.raised;
   const borderColor = variant === 'secondary' ? colors.border.default : 'transparent';
   const borderWidth = variant === 'secondary' ? Layout.hairline : 0;
 

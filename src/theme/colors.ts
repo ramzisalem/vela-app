@@ -71,27 +71,30 @@ export const lightColors: ThemeColors = {
     camera: Palette.charcoal950,
   },
   text: {
-    primary: Palette.espresso900, // espresso, never `#000`
+    /** True near-black with cool tilt — never `#000`, never warm-brown. */
+    primary: Palette.espresso900,
     secondary: Palette.sand500,
     tertiary: Palette.cream300,
     inverse: Palette.white,
-    accent: Palette.blue400,
+    accent: Palette.blue400, // copper
   },
   border: {
     default: Palette.cream200,
-    subtle: 'rgba(202, 187, 166, 0.35)',
-    strong: Palette.cream300,
-    accent: Palette.blue400,
+    /** Slightly bolder than the previous 0.35α — confident, not timid. */
+    subtle: 'rgba(15, 15, 18, 0.08)',
+    strong: 'rgba(15, 15, 18, 0.18)',
+    accent: Palette.blue400, // copper
   },
   accent: {
-    default: Palette.blue400,
-    pressed: Palette.blue500,
+    default: Palette.blue400, // ★ copper #C77F4A
+    pressed: Palette.blue500, // copper pressed
     muted: Palette.blue200,
-    background: 'rgba(91, 141, 184, 0.10)',
+    /** Copper wash @ 10% — used for selected option fills. */
+    background: 'rgba(199, 127, 74, 0.10)',
   },
-  success: { default: Palette.successLight, background: 'rgba(122, 166, 130, 0.15)' },
-  warning: { default: Palette.warningLight, background: 'rgba(212, 166, 97, 0.15)' },
-  error: { default: Palette.errorLight, background: 'rgba(216, 139, 126, 0.15)' },
+  success: { default: Palette.successLight, background: 'rgba(60, 138, 107, 0.12)' },
+  warning: { default: Palette.warningLight, background: 'rgba(201, 154, 78, 0.14)' },
+  error: { default: Palette.errorLight, background: 'rgba(181, 86, 74, 0.14)' },
   score: { high: Palette.successLight, mid: Palette.warningLight, low: Palette.errorLight },
   subScore: {
     skin: Palette.skin,
@@ -101,9 +104,10 @@ export const lightColors: ThemeColors = {
     grooming: Palette.grooming,
   },
   overlay: {
-    scrim: 'rgba(36, 31, 26, 0.5)',
-    light: 'rgba(36, 31, 26, 0.05)',
-    dark: 'rgba(36, 31, 26, 0.7)',
+    /** Obsidian scrim — replaces the warm espresso veil. */
+    scrim: 'rgba(15, 15, 18, 0.5)',
+    light: 'rgba(15, 15, 18, 0.05)',
+    dark: 'rgba(15, 15, 18, 0.72)',
   },
   surface: {
     raised: Palette.white,
@@ -122,27 +126,29 @@ export const darkColors: ThemeColors = {
     camera: Palette.cool950,
   },
   text: {
-    primary: '#F5EFE5',
-    secondary: '#A89C8C',
-    tertiary: '#6B6256',
+    /** Canvas color inverted — warm paper on obsidian. */
+    primary: Palette.cream50,
+    secondary: '#8B8579',
+    tertiary: '#5F5A52',
     inverse: Palette.espresso900,
-    accent: Palette.blue300,
+    accent: Palette.pink300, // lighter copper on dark
   },
   border: {
-    default: 'rgba(245, 239, 229, 0.08)',
-    subtle: 'rgba(245, 239, 229, 0.04)',
-    strong: 'rgba(245, 239, 229, 0.16)',
-    accent: Palette.blue300,
+    default: 'rgba(250, 248, 244, 0.10)',
+    subtle: 'rgba(250, 248, 244, 0.06)',
+    strong: 'rgba(250, 248, 244, 0.18)',
+    accent: Palette.pink300, // lighter copper on dark
   },
   accent: {
-    default: Palette.blue300,
-    pressed: Palette.blue400,
+    default: Palette.pink300, // light copper for OLED contrast
+    pressed: Palette.mauve500, // signature copper
     muted: Palette.cool800,
-    background: 'rgba(122, 166, 203, 0.15)',
+    /** Copper wash @ 14% on obsidian — selected option fills. */
+    background: 'rgba(224, 165, 114, 0.14)',
   },
-  success: { default: Palette.successLight, background: 'rgba(122, 166, 130, 0.20)' },
-  warning: { default: Palette.warningLight, background: 'rgba(212, 166, 97, 0.20)' },
-  error: { default: Palette.errorLight, background: 'rgba(216, 139, 126, 0.20)' },
+  success: { default: Palette.successLight, background: 'rgba(60, 138, 107, 0.18)' },
+  warning: { default: Palette.warningLight, background: 'rgba(201, 154, 78, 0.20)' },
+  error: { default: Palette.errorLight, background: 'rgba(181, 86, 74, 0.20)' },
   score: { high: Palette.successLight, mid: Palette.warningLight, low: Palette.errorLight },
   subScore: {
     skin: Palette.skin,
@@ -152,9 +158,9 @@ export const darkColors: ThemeColors = {
     grooming: Palette.grooming,
   },
   overlay: {
-    scrim: 'rgba(10, 12, 18, 0.6)',
-    light: 'rgba(245, 239, 229, 0.06)',
-    dark: 'rgba(10, 12, 18, 0.8)',
+    scrim: 'rgba(8, 8, 12, 0.65)',
+    light: 'rgba(250, 248, 244, 0.06)',
+    dark: 'rgba(8, 8, 12, 0.82)',
   },
   surface: {
     raised: Palette.cool850,

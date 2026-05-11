@@ -1,80 +1,124 @@
 /**
- * What Vela does — shown after welcome, before the questionnaire.
- * Horizontal pager: one feature per screen, sentence case (file 07 + 21).
+ * Features intro — cinematic feature showcase shown after welcome.
+ *
+ * Five hero panels that mirror real Vela surfaces (score ring, sub-score
+ * bars, trend chart, routine card, privacy lockup). Each panel is mostly
+ * visual: a tiny chapter kicker, a 5–7 word headline, the live preview, and
+ * a single proof tag. No body paragraph — the animation does the talking.
+ *
+ * Auto-advances every ~5.4s. Manual swipe still works. Bottom is segmented
+ * progress + sheened CTA.
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
+  StyleSheet,
   useWindowDimensions,
   View,
   type ListRenderItem,
-  type NativeSyntheticEvent,
   type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Screen } from '@/components/ui/Screen';
+import Animated, { Easing, FadeIn, FadeInUp } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
-import { Body, Caption, HeadlineSerif } from '@/components/ui/Text';
+import { Caption } from '@/components/ui/Text';
+import { OnboardingScene } from '@/components/onboarding/OnboardingScene';
+import { EmphasisHeadline } from '@/components/onboarding/EmphasisHeadline';
+import { InfoCard } from '@/components/onboarding/InfoCard';
+import { SegmentedProgress } from '@/components/onboarding/SegmentedProgress';
 import {
-  OnboardingAccentRule,
-  OnboardingAnimatedEnter,
-  OnboardingFooter,
-} from '@/components/onboarding/OnboardingChrome';
-import { useColors } from '@/theme/ThemeContext';
-import { Radii, Spacing, Layout } from '@/theme/spacing';
-import type { ComponentProps } from 'react';
+  CapturePreview,
+  MetricsPreview,
+  RoutinePreview,
+  TrendPreview,
+  PrivacyPreview,
+} from '@/components/onboarding/FeaturePreviews';
+import { Layout, Spacing } from '@/theme/spacing';
+import { AnimationDuration } from '@/theme/animations';
 
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
+type SlideId = 'capture' | 'metrics' | 'trend' | 'routine' | 'privacy';
 
-interface FeatureSlide {
-  id: string;
-  icon: IoniconName;
+interface Slide {
+  id: SlideId;
+  numeral: string;
+  kicker: string;
+  /** Headline string — supports `**bold**` spans for the topic word. */
   title: string;
-  body: string;
+  /** Soft body explanation, shown inside an InfoCard under the headline. */
+  info: string;
+  Preview: React.ComponentType;
 }
 
-const SLIDES: FeatureSlide[] = [
+const SLIDES: ReadonlyArray<Slide> = [
   {
-    id: 'scans',
-    icon: 'scan-outline',
-    title: 'Weekly scans that match each other',
-    body: 'Same framing and lighting guidance each time, so the deltas on your dashboard reflect real change, not a different angle.',
+    id: 'capture',
+    numeral: '01',
+    kicker: 'Capture',
+    title: 'One scan. **One score**.',
+    info: 'A 20-second weekly scan with **AR alignment** so every frame matches the last.',
+    Preview: CapturePreview,
   },
   {
-    id: 'scores',
-    icon: 'analytics-outline',
-    title: 'Scores you can actually read',
-    body: 'Skin texture, symmetry, vitality, and more — broken into numbers with short explanations. No gatekeeping, no jargon wall.',
+    id: 'metrics',
+    numeral: '02',
+    kicker: 'Measure',
+    title: 'Five dimensions of **your face**.',
+    info: 'Skin, symmetry, lighting, contour, grooming — measured in **plain numbers**, never opinions.',
+    Preview: MetricsPreview,
+  },
+  {
+    id: 'trend',
+    numeral: '03',
+    kicker: 'Trend',
+    title: 'See **real change**.',
+    info: 'On average, users gain **+19 points** in their first 8 weeks. You will see your own line draw.',
+    Preview: TrendPreview,
   },
   {
     id: 'routine',
-    icon: 'calendar-outline',
-    title: 'A routine that respects your life',
-    body: 'Suggestions scale to the time and budget you will share in the next steps. Fewer generic tips, more grounded nudges.',
+    numeral: '04',
+    kicker: 'Adapt',
+    title: 'A routine **for your day**.',
+    info: 'Five to twenty-five minutes, **tuned to your time** and budget — not the other way around.',
+    Preview: RoutinePreview,
   },
   {
     id: 'privacy',
-    icon: 'shield-checkmark-outline',
-    title: 'Your face stays on your device',
-    body: 'Baseline photos and depth stay local. Synced data is measurements and choices you approve — covered again before we ask lifestyle questions.',
+    numeral: '05',
+    kicker: 'Protect',
+    title: 'Your face **stays with you**.',
+    info: 'Photos and depth never leave this device. Only the **measurements** sync.',
+    Preview: PrivacyPreview,
   },
 ];
 
+const AUTO_ADVANCE_MS = 5400;
+
 export default function FeaturesIntroScreen() {
   const router = useRouter();
-  const colors = useColors();
   const { width } = useWindowDimensions();
-  const listRef = useRef<FlatList<FeatureSlide>>(null);
+  const listRef = useRef<FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
   const last = index >= SLIDES.length - 1;
 
-  const onScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const next = Math.round(x / Math.max(1, width));
-    setIndex(Math.min(Math.max(next, 0), SLIDES.length - 1));
-  }, [width]);
+  useEffect(() => {
+    if (last) return;
+    const id = setTimeout(() => {
+      listRef.current?.scrollToIndex({ index: index + 1, animated: true, viewPosition: 0 });
+    }, AUTO_ADVANCE_MS);
+    return () => clearTimeout(id);
+  }, [index, last]);
+
+  const onScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const x = e.nativeEvent.contentOffset.x;
+      const next = Math.round(x / Math.max(1, width));
+      setIndex(Math.min(Math.max(next, 0), SLIDES.length - 1));
+    },
+    [width],
+  );
 
   const goNext = useCallback(() => {
     if (last) {
@@ -84,95 +128,98 @@ export default function FeaturesIntroScreen() {
     listRef.current?.scrollToIndex({ index: index + 1, animated: true, viewPosition: 0 });
   }, [index, last, router]);
 
-  const goBack = useCallback(() => {
-    if (index === 0) {
-      router.back();
-      return;
-    }
-    listRef.current?.scrollToIndex({ index: index - 1, animated: true, viewPosition: 0 });
-  }, [index, router]);
-
-  const renderSlide: ListRenderItem<FeatureSlide> = useCallback(
-    ({ item }) => (
-      <View style={{ width, paddingHorizontal: Spacing.base, justifyContent: 'center' }}>
-        <OnboardingAccentRule />
-        <View style={{ alignItems: 'center' }}>
-          <View
-            style={{
-              width: 88,
-              height: 88,
-              borderRadius: Radii.xl,
-              backgroundColor: colors.accent.background,
-              borderWidth: Layout.hairline,
-              borderColor: colors.border.accent,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: Spacing.xl,
-            }}
+  const renderSlide: ListRenderItem<Slide> = useCallback(
+    ({ item }) => {
+      const Preview = item.Preview;
+      return (
+        <View
+          style={{
+            width,
+            paddingHorizontal: Layout.screenInset,
+            justifyContent: 'center',
+          }}
+        >
+          {/* Headline — centered, inline-emphasis topic word */}
+          <Animated.View
+            key={`copy-${item.id}`}
+            entering={FadeIn.duration(AnimationDuration.base)}
+            style={{ marginBottom: Spacing.lg }}
           >
-            <Ionicons name={item.icon} size={40} color={colors.accent.default} />
-          </View>
-          <HeadlineSerif style={{ marginBottom: Spacing.lg, textAlign: 'center' }}>{item.title}</HeadlineSerif>
-          <Body tone="secondary" style={{ textAlign: 'center', lineHeight: 24 }}>
-            {item.body}
-          </Body>
+            <EmphasisHeadline size={28}>{item.title}</EmphasisHeadline>
+          </Animated.View>
+
+          {/* Hero preview */}
+          <Animated.View
+            key={`preview-${item.id}`}
+            entering={FadeInUp.duration(440).delay(80).easing(Easing.out(Easing.cubic))}
+            style={{ alignItems: 'center', marginBottom: Spacing.lg }}
+          >
+            <Preview />
+          </Animated.View>
+
+          {/* InfoCard — soft explanation under the preview */}
+          <Animated.View
+            entering={FadeInUp.duration(440).delay(200).easing(Easing.out(Easing.cubic))}
+          >
+            <InfoCard body={item.info} tone="warm" />
+          </Animated.View>
         </View>
-      </View>
-    ),
-    [colors, width],
+      );
+    },
+    [width],
   );
 
   return (
-    <Screen variant="secondary">
-      <OnboardingAnimatedEnter style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
-          <Caption tone="tertiary" style={{ textAlign: 'center', marginBottom: Spacing.sm }}>
-            What you get
-          </Caption>
-          <FlatList
-            ref={listRef}
-            data={SLIDES}
-            keyExtractor={(it) => it.id}
-            renderItem={renderSlide}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            bounces={false}
-            onMomentumScrollEnd={onScrollEnd}
-            getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-            initialNumToRender={SLIDES.length}
-            onScrollToIndexFailed={({ index: target }) => {
-              setTimeout(
-                () => listRef.current?.scrollToIndex({ index: target, animated: true, viewPosition: 0 }),
-                100,
-              );
-            }}
+    <OnboardingScene
+      footer={
+        <View style={{ paddingBottom: Spacing.md, gap: Spacing.md }}>
+          <SegmentedProgress
+            sectionIndex={index}
+            sectionCount={SLIDES.length}
+            stepInSection={1}
+            stepsInSection={1}
           />
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm, paddingVertical: Spacing.lg }}>
-            {SLIDES.map((s, i) => (
-              <Pressable
-                key={s.id}
-                accessibilityRole="button"
-                accessibilityLabel={i === index ? `Slide ${i + 1} of ${SLIDES.length}, current` : `Go to slide ${i + 1}`}
-                onPress={() => listRef.current?.scrollToIndex({ index: i, animated: true, viewPosition: 0 })}
-              >
-                <View
-                  style={{
-                    width: i === index ? 22 : 8,
-                    height: 8,
-                    borderRadius: Radii.pill,
-                    backgroundColor: i === index ? colors.accent.default : colors.border.subtle,
-                  }}
-                />
-              </Pressable>
-            ))}
-          </View>
+          <Button
+            label={last ? 'Build my plan' : 'Next'}
+            variant="dark"
+            size="xl"
+            fullWidth
+            onPress={goNext}
+          />
+          <Pressable onPress={() => router.back()} hitSlop={12} accessibilityRole="button">
+            <Caption tone="tertiary" style={{ textAlign: 'center', paddingVertical: 2 }}>
+              Back
+            </Caption>
+          </Pressable>
         </View>
-      </OnboardingAnimatedEnter>
-      <OnboardingFooter>
-        <Button label={last ? 'Start questions' : 'Next'} size="xl" fullWidth onPress={goNext} />
-        <Button label={index === 0 ? 'Back to welcome' : 'Previous'} variant="ghost" fullWidth style={{ marginTop: Spacing.sm }} onPress={goBack} />
-      </OnboardingFooter>
-    </Screen>
+      }
+      contentStyle={styles.bleed}
+    >
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={listRef}
+          data={SLIDES as Slide[]}
+          keyExtractor={(it) => it.id}
+          renderItem={renderSlide}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          onMomentumScrollEnd={onScrollEnd}
+          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+          initialNumToRender={SLIDES.length}
+          onScrollToIndexFailed={({ index: target }) => {
+            setTimeout(
+              () => listRef.current?.scrollToIndex({ index: target, animated: true, viewPosition: 0 }),
+              80,
+            );
+          }}
+        />
+      </View>
+    </OnboardingScene>
   );
 }
+
+const styles = StyleSheet.create({
+  bleed: { paddingHorizontal: 0 },
+});

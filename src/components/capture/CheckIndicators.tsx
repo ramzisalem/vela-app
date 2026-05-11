@@ -1,13 +1,20 @@
 /**
  * CheckIndicators (file 05).
  *
- * Three small pills at the top — distance, lighting, alignment. Each turns
- * accent-tinted when the underlying check passes. Designed to be glanceable
- * in 1 second on a moving camera UI.
+ * Four pills at the top — distance, lighting, pose, calm. Each pill must be
+ * unambiguously readable on a dark camera preview: when the underlying check
+ * passes the pill fills with the accent color and gains a checkmark; when it
+ * fails it stays an outlined, low-key chip. Designed for one-second glances.
+ *
+ * The previous implementation used a pale accent.background fill on the OK
+ * state, which on the camera viewfinder became less visible than the failing
+ * state — defeating the indicator. This version inverts that contrast so a
+ * passing pill *reads* as a clear positive signal at a glance.
  */
 import React from 'react';
 import { View } from 'react-native';
-import { Caption } from '@/components/ui/Text';
+import { Ionicons } from '@expo/vector-icons';
+import { Text } from '@/components/ui/Text';
 import { useColors } from '@/theme/ThemeContext';
 import { Radii, Spacing } from '@/theme/spacing';
 
@@ -30,17 +37,33 @@ function Pill({ label, ok }: PillProps) {
   return (
     <View
       style={{
-        paddingHorizontal: Spacing.xs,
-        paddingVertical: Spacing.xxs,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: Spacing.sm + 2,
+        paddingVertical: 5,
         borderRadius: Radii.pill,
-        backgroundColor: ok ? colors.accent.background : 'rgba(0,0,0,0.22)',
-        borderWidth: ok ? 1 : 0,
-        borderColor: ok ? colors.border.accent : 'transparent',
-        marginHorizontal: 2,
+        // OK: full copper fill, white text. Fail: outlined, white text on dark.
+        backgroundColor: ok ? colors.accent.default : 'rgba(0,0,0,0.30)',
+        borderWidth: ok ? 0 : 1,
+        borderColor: ok ? 'transparent' : 'rgba(255,255,255,0.35)',
+        marginHorizontal: 3,
       }}
       accessibilityLabel={`${label}: ${ok ? 'good' : 'adjust'}`}
     >
-      <Caption tone={ok ? 'accent' : 'inverse'}>{label}</Caption>
+      {ok ? (
+        <Ionicons name="checkmark" size={11} color={colors.text.inverse} />
+      ) : null}
+      <Text
+        variant="caption"
+        style={{
+          color: colors.text.inverse,
+          fontWeight: ok ? '600' : '500',
+          fontSize: 12,
+        }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

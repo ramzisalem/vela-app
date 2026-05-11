@@ -44,10 +44,10 @@ export function Wordmark({
     forceTone === 'light'
       ? '#FFFFFF'
       : forceTone === 'dark'
-        ? '#241F1A'
+        ? '#0F0F12' // ink (Obsidian & Copper edition)
         : mode === 'dark'
-          ? '#F5EFE5'
-          : '#241F1A';
+          ? '#FAF8F4' // canvas
+          : '#0F0F12';
 
   const text = (
     <Text
