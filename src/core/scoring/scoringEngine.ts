@@ -103,35 +103,58 @@ export async function processCaptureSession(args: ProcessArgs): Promise<ScanSess
 
   const persisted: PersistedAngle[] = [];
   for (const a of args.angles) {
-    const photoPath = await persistPhoto(a.capture.imageUri, dir, a.angle);
-    persisted.push({ ...a.capture, angle: a.angle, photoPath });
+    try {
+      const photoPath = await persistPhoto(a.capture.imageUri, dir, a.angle);
+      persisted.push({ ...a.capture, angle: a.angle, photoPath });
+    } catch (e) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn(`[scoringEngine] persistPhoto failed for ${a.angle}, skipping:`, e);
+      }
+    }
+  }
+  if (persisted.length === 0) {
+    throw new Error('All captured photos failed to persist locally.');
   }
 
   const raw = calculateRawMetrics(persisted);
   const baseScores = computeBaseScores(raw, args.profile.scoringFramework);
 
   // AI: grooming + skin from the front-angle photo.
+  //
+  // ANY failure in this block — base64 read, network error, supabase auth
+  // mishap pre-signup, AIService bug — must NOT take the whole scan down.
+  // Fall back to `qualitativePending = true`; the user still gets base scores
+  // and AI metrics retry later via the deferred sync path (file 06 fallbacks).
   const front = persisted.find((p) => p.angle === 'front');
   let qualitativePending = false;
   let aiSkin: number | undefined;
   let aiGrooming: number | undefined;
   if (front) {
-    const imageBase64 = await FileSystem.readAsStringAsync(front.photoPath, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const [skinResult, groomResult] = await Promise.all([
-      AIService.assessSkin({
-        imageBase64,
-        profile: args.profile.scoringFramework,
-      }),
-      AIService.assessGrooming({
-        imageBase64,
-        profile: args.profile.scoringFramework,
-      }),
-    ]);
-    if (skinResult) aiSkin = skinResult.score;
-    if (groomResult) aiGrooming = groomResult.score;
-    if (!skinResult || !groomResult) qualitativePending = true;
+    try {
+      const imageBase64 = await FileSystem.readAsStringAsync(front.photoPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const [skinResult, groomResult] = await Promise.all([
+        AIService.assessSkin({
+          imageBase64,
+          profile: args.profile.scoringFramework,
+        }),
+        AIService.assessGrooming({
+          imageBase64,
+          profile: args.profile.scoringFramework,
+        }),
+      ]);
+      if (skinResult) aiSkin = skinResult.score;
+      if (groomResult) aiGrooming = groomResult.score;
+      if (!skinResult || !groomResult) qualitativePending = true;
+    } catch (e) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn('[scoringEngine] AI block failed, falling back to base scores:', e);
+      }
+      qualitativePending = true;
+    }
   }
   const scores: ScanScores = {
     ...baseScores,

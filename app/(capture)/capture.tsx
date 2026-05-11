@@ -185,24 +185,51 @@ export default function CaptureScreen() {
   const onCapture = useCallback(async () => {
     if (isProcessing) return;
     setIsProcessing(true);
+
+    // Phase 1: native capture. A failure here genuinely means "redo this frame."
+    let result: CaptureResult;
     try {
-      const result = await VelaFaceTracker.captureFrame();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-      setCaptures((prev) => ({ ...prev, [currentAngle]: result }));
-      if (angleIndex < ANGLES.length - 1) {
-        setAngleIndex((i) => i + 1);
-      } else {
-        // All angles done — stop session, run scoring engine.
-        stoppedRef.current = true;
-        VelaFaceTracker.stopSession();
-        await finishSession({ ...captures, [currentAngle]: result });
+      result = await VelaFaceTracker.captureFrame();
+    } catch (e) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn('[capture] captureFrame failed:', e);
       }
-    } catch {
       toast.warning('That scan needs a quick redo. Try once more when you’re ready.');
+      setIsProcessing(false);
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    setCaptures((prev) => ({ ...prev, [currentAngle]: result }));
+
+    if (angleIndex < ANGLES.length - 1) {
+      setAngleIndex((i) => i + 1);
+      setIsProcessing(false);
+      return;
+    }
+
+    // Phase 2: all three angles done — stop the AR session and run scoring.
+    // Scoring failures should NOT trigger "redo" — the captures are good. We log
+    // for dev and surface a more accurate message.
+    stoppedRef.current = true;
+    VelaFaceTracker.stopSession();
+    try {
+      await finishSession({ ...captures, [currentAngle]: result });
+    } catch (e) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.error('[capture] finishSession failed:', e);
+      }
+      toast.error(
+        __DEV__
+          ? `Could not process scan: ${(e as Error).message ?? 'unknown'}`
+          : 'We couldn’t process that scan. Please try again.',
+      );
+      exitCapture();
     } finally {
       setIsProcessing(false);
     }
-  }, [angleIndex, captures, currentAngle, isProcessing]);
+  }, [angleIndex, captures, currentAngle, isProcessing, exitCapture]);
 
   const onRetake = useCallback(() => {
     if (retakeCount >= MAX_RETAKES_PER_SESSION) {
