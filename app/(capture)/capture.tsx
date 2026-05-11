@@ -36,6 +36,7 @@ import { AlignmentOverlay } from '@/components/capture/AlignmentOverlay';
 import { CheckIndicators } from '@/components/capture/CheckIndicators';
 import { ShutterButton } from '@/components/capture/ShutterButton';
 import { AngleProgress } from '@/components/capture/AngleProgress';
+import { PoseDebugHUD } from '@/components/capture/PoseDebugHUD';
 import { scannerInstruction } from '@/components/capture/distanceHint';
 import { processCaptureSession } from '@/core/scoring/scoringEngine';
 import { useProfileStore } from '@/stores/profileStore';
@@ -315,6 +316,9 @@ export default function CaptureScreen() {
       <View style={[styles.cancel, { top: insets.top + Spacing.xs }]}>
         <Button label="Cancel" variant="ghost" onPress={exitCapture} />
       </View>
+
+      {/* Dev-only debug overlay showing the raw face-tracker payload. */}
+      <PoseDebugHUD state={trackingState} angle={currentAngle} />
     </View>
   );
 }

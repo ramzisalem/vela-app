@@ -300,7 +300,7 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
             towardCam: towardCamUnit,
             cameraTransform: cameraTransform,
         )
-        let rollOk = rollMag <= 0.55  // ~31° — a real head-cock should fail; small wobble passes.
+        let rollOk = rollMag <= 0.90  // ~52° — generous so casual head-cock still passes.
 
         // Pitch: how much the head is tilted up/down relative to the toward-camera ray.
         // Measured as the angle between face-forward (out nose) and the toward-cam direction,
@@ -310,7 +310,7 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
             towardCam: towardCamUnit,
             cameraTransform: cameraTransform,
         )
-        let pitchOk = pitchMag <= 0.55  // ~31°
+        let pitchOk = pitchMag <= 0.90  // ~52° — generous so head tilted to look at phone still passes.
 
         let yawOk: Bool
         switch currentAngle {
@@ -319,7 +319,7 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
                 faceTransform: transform,
                 cameraTransform: cameraTransform,
             )
-            yawOk = heading <= 0.78
+            yawOk = heading <= 1.05  // ~60° — generous; only fail when face is genuinely off-camera.
         case "left_turn":
             let faceFwd = faceForwardTowardCamera(faceTransform: transform, cameraPosition: camPos)
             let yp = planarYawRelativeToCamera(faceFwd: faceFwd, cameraTransform: cameraTransform)
@@ -368,7 +368,13 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
             "isNeutral": isNeutral,
             "alignment": [
                 "yaw": yaw, "pitch": pitch, "roll": roll,
-                "yawOk": yawOk, "pitchOk": pitchOk, "rollOk": rollOk,
+                // Explicit NSNumber boxing — bridging a Swift Bool inside `[String: Any]`
+                // alongside Doubles can occasionally land on the JS side as `0`/`1` rather
+                // than `true`/`false`. `nativeBool()` already handles that, but forcing
+                // NSNumber(value:) makes the boolean intent unambiguous in the bridge.
+                "yawOk": NSNumber(value: yawOk),
+                "pitchOk": NSNumber(value: pitchOk),
+                "rollOk": NSNumber(value: rollOk),
             ],
             "transform": Array(transform.flat()),
             "rotation": ["yaw": yaw, "pitch": pitch, "roll": roll],
