@@ -6,7 +6,7 @@
  * across the pre-paywall → post-paywall transition (file 40 SPEC_REVIEW_3).
  */
 
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type {
   DailyRoutine,
   RoutineTask,

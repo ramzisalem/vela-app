@@ -10,7 +10,7 @@
  *   5. Builds the ScanSession (with pending_sync if profile preflight fails).
  */
 import * as FileSystem from 'expo-file-system';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type {
   CaptureAngle,
   CanonicalPose,

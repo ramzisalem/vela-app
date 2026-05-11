@@ -10,7 +10,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type { OnboardingQuestionPhase, QuestionId } from '@/core/onboarding/questions';
 import type { Gender, ScoringFramework, UserProfile } from '@/types';
 import { frameworkForGender } from '@/types';

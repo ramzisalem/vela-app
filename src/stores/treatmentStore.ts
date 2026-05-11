@@ -5,7 +5,7 @@
  * tables (v1.5 migration). Photos remain on-device (file 32).
  */
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type {
   UserTreatment,
   UserTreatmentSideEffect,

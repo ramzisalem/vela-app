@@ -12,7 +12,7 @@
  * faceMetric, healthSignal }`, never the underlying samples.
  */
 import { useCallback, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import { buildCorrelations } from '@/core/correlations/correlationEngine';
 import { AIService } from '@/services/ai';
 import { getHealthService } from '@/services/health';

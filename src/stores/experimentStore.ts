@@ -7,7 +7,7 @@
  * prior active one if the user explicitly opts in.
  */
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type {
   ComplianceLogEntry,
   Experiment,

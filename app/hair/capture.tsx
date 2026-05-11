@@ -6,7 +6,7 @@ import React, { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Stack, router } from 'expo-router';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import { useColors } from '@/theme';
 import { Body, Caption, HeadlineSerif, Title } from '@/components/ui/Text';
 import { Button } from '@/components/ui/Button';

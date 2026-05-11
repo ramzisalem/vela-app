@@ -5,7 +5,7 @@
  * runtime cache the UI reads from.
  */
 import { create } from 'zustand';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '@/utils/uuid';
 import type {
   DiaryAttachment,
   DiaryEntry,
