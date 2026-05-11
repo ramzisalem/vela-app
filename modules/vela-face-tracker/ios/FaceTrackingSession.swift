@@ -320,13 +320,16 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
         case "front":
             yawOk = headingForMag <= 0.70  // ~40° — pose is "facing the camera" when the cone is small.
         case "left_turn":
+            // yp > 0 = user turned to their own left (right cheek toward lens).
+            // ~14° lower bound so a casual turn starts registering; ~80° upper bound to
+            // include almost-full profiles before atan2 saturates near π/2.
             let faceFwd = faceForwardTowardCamera(faceTransform: transform, cameraPosition: camPos)
             let yp = planarYawRelativeToCamera(faceFwd: faceFwd, towardCam: towardCamUnit)
-            yawOk = yp >= 0.28 && yp <= 1.55
+            yawOk = yp >= 0.20 && yp <= 1.40
         case "right_turn":
             let faceFwd = faceForwardTowardCamera(faceTransform: transform, cameraPosition: camPos)
             let yp = planarYawRelativeToCamera(faceFwd: faceFwd, towardCam: towardCamUnit)
-            yawOk = yp <= -0.28 && yp >= -1.55
+            yawOk = yp <= -0.20 && yp >= -1.40
         default:
             yawOk = alignmentTarget.yawRange.contains(yaw)
         }
@@ -497,7 +500,12 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
      Horizontal turn angle (rad): signed yaw of face-forward relative to the toward-camera
      direction, measured in the **gravity-horizontal plane** (around world-up, not the
      iPhone's sensor-rotated camera-Y). 0 ≈ nose toward lens; ±turn ≈ cheek toward lens.
-     Sign follows right-hand rule around world-up: positive = user turned left.
+
+     Sign convention: **positive = user turned to their own LEFT** (their right cheek faces
+     the camera), negative = user turned right. The `cross(hf, cf)` order is intentional —
+     when face-fwd has been rotated to the user's left from toward-cam, the cross product
+     with world-up gives a positive component, which matches the natural "left turn = +"
+     convention and the existing left_turn / right_turn gates downstream.
      */
     private func planarYawRelativeToCamera(faceFwd: SIMD3<Float>, towardCam: SIMD3<Float>) -> Float {
         let up = Self.WORLD_UP
@@ -507,14 +515,16 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
         } else {
             hf = simd_normalize(hf)
         }
-        // toward-cam is "the direction the user should look to face the camera"
         var cf = towardCam - simd_dot(towardCam, up) * up
         if simd_length_squared(cf) < 1e-10 {
             cf = SIMD3<Float>(0, 0, -1)
         } else {
             cf = simd_normalize(cf)
         }
-        let cr = simd_cross(cf, hf)
+        // hf × cf (not cf × hf): puts "user turned left" on the positive side. Earlier
+        // version had this inverted, which is why the left_turn gate was matching right
+        // turns and the indicator only fired on extreme rotations.
+        let cr = simd_cross(hf, cf)
         let si = simd_dot(cr, up)
         let co = simd_dot(cf, hf)
         return atan2(si, co)
