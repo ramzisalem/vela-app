@@ -52,6 +52,9 @@ export function normalizeTrackingState(raw: unknown): FaceTrackingState {
           yaw: typeof align.yaw === 'number' ? align.yaw : 0,
           pitch: typeof align.pitch === 'number' ? align.pitch : 0,
           roll: typeof align.roll === 'number' ? align.roll : 0,
+          yawMag: typeof align.yawMag === 'number' ? align.yawMag : 0,
+          pitchMag: typeof align.pitchMag === 'number' ? align.pitchMag : 0,
+          rollMag: typeof align.rollMag === 'number' ? align.rollMag : 0,
         }
       : {
           yawOk: false,
@@ -60,6 +63,9 @@ export function normalizeTrackingState(raw: unknown): FaceTrackingState {
           yaw: 0,
           pitch: 0,
           roll: 0,
+          yawMag: 0,
+          pitchMag: 0,
+          rollMag: 0,
         },
     transform: Array.isArray(o.transform) ? [...(o.transform as number[])] : [],
     rotation: {

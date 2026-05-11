@@ -47,13 +47,13 @@ export function PoseDebugHUD({ state, angle }: Props) {
         face {bool(state.isFaceDetected)}  ready {bool(state.isReady)}  hold {(state.readyHoldProgress ?? 0).toFixed(2)}
       </Text>
       <Text style={styles.line}>
-        yaw  {rad2deg(a.yaw)}  {bool(a.yawOk)}
+        yaw  mag {rad2deg(a.yawMag)}  euler {rad2deg(a.yaw)}  {bool(a.yawOk)}
       </Text>
       <Text style={styles.line}>
-        pitch {rad2deg(a.pitch)}  {bool(a.pitchOk)}
+        pitch mag {rad2deg(a.pitchMag)}  euler {rad2deg(a.pitch)}  {bool(a.pitchOk)}
       </Text>
       <Text style={styles.line}>
-        roll {rad2deg(a.roll)}  {bool(a.rollOk)}
+        roll mag {rad2deg(a.rollMag)}  euler {rad2deg(a.roll)}  {bool(a.rollOk)}
       </Text>
       <Text style={styles.line}>
         dist {state.distance.toFixed(2)}m · {state.distanceHint}

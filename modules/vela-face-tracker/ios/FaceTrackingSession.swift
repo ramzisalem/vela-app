@@ -298,35 +298,34 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
         let rollMag = planarTiltMisalignmentRad(
             faceTransform: transform,
             towardCam: towardCamUnit,
-            cameraTransform: cameraTransform,
         )
-        let rollOk = rollMag <= 0.90  // ~52° — generous so casual head-cock still passes.
+        let rollOk = rollMag <= 0.55  // ~31° — head-cock around the cam axis.
 
         // Pitch: how much the head is tilted up/down relative to the toward-camera ray.
-        // Measured as the angle between face-forward (out nose) and the toward-cam direction,
-        // projected onto the camera's vertical plane (plane spanned by toward-cam and cam-up).
+        // Now measured against gravity-up, so portrait-camera sensor mounting can't fool it.
         let pitchMag = planarPitchMisalignmentRad(
             faceTransform: transform,
             towardCam: towardCamUnit,
-            cameraTransform: cameraTransform,
         )
-        let pitchOk = pitchMag <= 0.90  // ~52° — generous so head tilted to look at phone still passes.
+        let pitchOk = pitchMag <= 0.55  // ~31°
 
         let yawOk: Bool
+        // Cone angle between face-forward and toward-cam — always emitted as the yaw
+        // magnitude regardless of which angle is active (HUD/analytics-friendly).
+        let headingForMag = headingAngleFaceTowardCameraRad(
+            faceTransform: transform,
+            cameraTransform: cameraTransform,
+        )
         switch currentAngle {
         case "front":
-            let heading = headingAngleFaceTowardCameraRad(
-                faceTransform: transform,
-                cameraTransform: cameraTransform,
-            )
-            yawOk = heading <= 1.05  // ~60° — generous; only fail when face is genuinely off-camera.
+            yawOk = headingForMag <= 0.70  // ~40° — pose is "facing the camera" when the cone is small.
         case "left_turn":
             let faceFwd = faceForwardTowardCamera(faceTransform: transform, cameraPosition: camPos)
-            let yp = planarYawRelativeToCamera(faceFwd: faceFwd, cameraTransform: cameraTransform)
+            let yp = planarYawRelativeToCamera(faceFwd: faceFwd, towardCam: towardCamUnit)
             yawOk = yp >= 0.28 && yp <= 1.55
         case "right_turn":
             let faceFwd = faceForwardTowardCamera(faceTransform: transform, cameraPosition: camPos)
-            let yp = planarYawRelativeToCamera(faceFwd: faceFwd, cameraTransform: cameraTransform)
+            let yp = planarYawRelativeToCamera(faceFwd: faceFwd, towardCam: towardCamUnit)
             yawOk = yp <= -0.28 && yp >= -1.55
         default:
             yawOk = alignmentTarget.yawRange.contains(yaw)
@@ -367,7 +366,15 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
             "isLightOk": lightOk,
             "isNeutral": isNeutral,
             "alignment": [
+                // Euler values stay for scoring / analytics. They include the 90°
+                // sensor-orientation offset on iPhone front cameras, so don't use them
+                // for UX gating — that's what `*Mag` is for.
                 "yaw": yaw, "pitch": pitch, "roll": roll,
+                // Geometric magnitudes used to drive the pose pill (gravity-referenced,
+                // sensor-orientation safe). 0 rad = perfectly aligned.
+                "yawMag": Double(headingForMag),
+                "pitchMag": Double(pitchMag),
+                "rollMag": Double(rollMag),
                 // Explicit NSNumber boxing — bridging a Swift Bool inside `[String: Any]`
                 // alongside Doubles can occasionally land on the JS side as `0`/`1` rather
                 // than `true`/`false`. `nativeBool()` already handles that, but forcing
@@ -487,79 +494,80 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
     }
 
     /**
-     Horizontal turn angle (rad): face forward projected into the plane through the camera perpendicular to cam “up”.
-     ~0rad ≈ nose toward lens; ±turn ≈ cheek toward lens. Sign follows right-hand rule around `camUp`.
+     Horizontal turn angle (rad): signed yaw of face-forward relative to the toward-camera
+     direction, measured in the **gravity-horizontal plane** (around world-up, not the
+     iPhone's sensor-rotated camera-Y). 0 ≈ nose toward lens; ±turn ≈ cheek toward lens.
+     Sign follows right-hand rule around world-up: positive = user turned left.
      */
-    private func planarYawRelativeToCamera(faceFwd: SIMD3<Float>, cameraTransform: simd_float4x4) -> Float {
-        let camUp = simd_normalize(simd_make_float3(cameraTransform.columns.1))
-        var camFwd = -simd_make_float3(cameraTransform.columns.2)
-        camFwd = simd_normalize(camFwd)
-        var hf = faceFwd - simd_dot(faceFwd, camUp) * camUp
+    private func planarYawRelativeToCamera(faceFwd: SIMD3<Float>, towardCam: SIMD3<Float>) -> Float {
+        let up = Self.WORLD_UP
+        var hf = faceFwd - simd_dot(faceFwd, up) * up
         if simd_length_squared(hf) < 1e-10 {
             hf = SIMD3<Float>(1, 0, 0)
         } else {
             hf = simd_normalize(hf)
         }
-        var cf = camFwd - simd_dot(camFwd, camUp) * camUp
+        // toward-cam is "the direction the user should look to face the camera"
+        var cf = towardCam - simd_dot(towardCam, up) * up
         if simd_length_squared(cf) < 1e-10 {
             cf = SIMD3<Float>(0, 0, -1)
         } else {
             cf = simd_normalize(cf)
         }
         let cr = simd_cross(cf, hf)
-        let si = simd_dot(cr, camUp)
+        let si = simd_dot(cr, up)
         let co = simd_dot(cf, hf)
         return atan2(si, co)
     }
 
+    /// World up. ARKit's world coordinate system has its Y axis gravity-aligned, both
+    /// for world-tracking and face-tracking configurations. We use this as the "up"
+    /// reference for pose math instead of `cameraTransform.columns.1` because the
+    /// iPhone front-camera **sensor is physically mounted in landscape**: in a portrait
+    /// app, the camera's local Y axis is 90° off from the user-perceived up direction,
+    /// which makes a perfectly upright head read as ~±90° "roll" against camera-Y.
+    /// Gravity-up dodges that entirely and matches what the user actually sees.
+    private static let WORLD_UP: SIMD3<Float> = SIMD3<Float>(0, 1, 0)
+
     /// Pitch misalignment (rad): how far face-forward tilts up/down relative to the
-    /// toward-camera ray, measured in the camera's vertical plane. Independent of roll
-    /// (the rotation around the toward-cam axis), so this and `planarTiltMisalignmentRad`
-    /// together give two non-redundant gates for the pose indicator.
-    ///
-    /// 0 rad = face-forward and toward-cam line up vertically (looking straight at camera).
+    /// toward-camera ray, measured in the world-vertical plane. Independent of roll.
+    /// 0 rad = looking straight at the camera; π/2 = nose pointed straight up/down.
     private func planarPitchMisalignmentRad(
         faceTransform: simd_float4x4,
         towardCam: SIMD3<Float>,
-        cameraTransform: simd_float4x4,
     ) -> Float {
-        // Build the camera's vertical plane basis: toward-cam ray + a "vertical" axis that
-        // is camera-up projected perpendicular to toward-cam.
-        let camUp = simd_normalize(simd_make_float3(cameraTransform.columns.1))
-        var vert = camUp - simd_dot(camUp, towardCam) * towardCam
+        // Vertical axis inside the plane perpendicular to toward-cam (world-up projected).
+        var vert = Self.WORLD_UP - simd_dot(Self.WORLD_UP, towardCam) * towardCam
         if simd_length_squared(vert) < 1e-10 {
             return 0
         }
         vert = simd_normalize(vert)
 
-        // Face forward axis (out of nose), with sign auto-chosen as in the heading helper.
+        // Face forward axis (out of nose), sign auto-chosen toward the camera.
         let c2 = simd_make_float3(faceTransform.columns.2)
         let n2 = simd_normalize(c2)
         let faceFwd = simd_dot(n2, towardCam) >= simd_dot(-n2, towardCam) ? n2 : -n2
 
-        // Project face-forward into the vertical plane (axes: towardCam, vert), then
-        // measure its tilt away from the toward-cam axis inside that plane.
-        let along = simd_dot(faceFwd, towardCam)        // forward-back component
-        let upDown = simd_dot(faceFwd, vert)            // up/down component
-        // If both are ~0 (degenerate), say "no pitch".
+        let along = simd_dot(faceFwd, towardCam)
+        let upDown = simd_dot(faceFwd, vert)
         if abs(along) + abs(upDown) < 1e-6 {
             return 0
         }
         return abs(atan2(upDown, along))
     }
 
-    /// How far face “up” diverges from level with preview, in radians (camera-up projected ⟂ toward-subject ray).
+    /// Roll misalignment (rad): how much the head is cocked around the toward-camera
+    /// axis. Compares face-up to gravity-up after projecting both onto the plane
+    /// perpendicular to toward-cam. 0 rad = head level with the world horizon.
     private func planarTiltMisalignmentRad(
         faceTransform: simd_float4x4,
         towardCam: SIMD3<Float>,
-        cameraTransform: simd_float4x4,
     ) -> Float {
-        let camUp = simd_normalize(simd_make_float3(cameraTransform.columns.1))
         var y = simd_normalize(simd_make_float3(faceTransform.columns.1))
-        if simd_dot(y, camUp) < simd_dot(-y, camUp) {
+        if simd_dot(y, Self.WORLD_UP) < simd_dot(-y, Self.WORLD_UP) {
             y = -y
         }
-        var nu = camUp - simd_dot(camUp, towardCam) * towardCam
+        var nu = Self.WORLD_UP - simd_dot(Self.WORLD_UP, towardCam) * towardCam
         if simd_length_squared(nu) < 1e-10 {
             return 0
         }

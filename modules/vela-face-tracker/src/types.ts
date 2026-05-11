@@ -15,9 +15,19 @@ export interface AlignmentChecks {
   yawOk: boolean;
   pitchOk: boolean;
   rollOk: boolean;
+  /** Euler ZYX values relative to camera (radians). Kept for scoring/analytics. */
   yaw: number;
   pitch: number;
   roll: number;
+  /**
+   * Gravity-referenced geometric magnitudes (radians) that actually drive the
+   * pose pill. Always ≥ 0. 0 = perfectly aligned. Use these in any UX surface;
+   * the Euler triplet above is misleading on iPhone front cameras (sensor in
+   * landscape → ~±90° apparent roll for an upright head).
+   */
+  yawMag: number;
+  pitchMag: number;
+  rollMag: number;
 }
 
 export interface FaceTrackingState {
