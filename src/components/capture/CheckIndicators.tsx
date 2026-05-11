@@ -1,10 +1,16 @@
 /**
  * CheckIndicators (file 05).
  *
- * Four pills at the top — distance, lighting, pose, calm. Each pill must be
- * unambiguously readable on a dark camera preview: when the underlying check
- * passes the pill fills with the accent color and gains a checkmark; when it
- * fails it stays an outlined, low-key chip. Designed for one-second glances.
+ * Three or four pills at the top — distance, lighting, pose, and (front only)
+ * calm. Each pill must be unambiguously readable on a dark camera preview: when
+ * the underlying check passes the pill fills with the accent color and gains a
+ * checkmark; when it fails it stays an outlined, low-key chip. Designed for
+ * one-second glances.
+ *
+ * The Calm pill is intentionally hidden on `left_turn` / `right_turn` angles:
+ * maintaining a perfectly neutral expression while turning the head 30–80° is
+ * unreliable and the readiness gate in native already relaxes isNeutral for
+ * those angles.
  *
  * The previous implementation used a pale accent.background fill on the OK
  * state, which on the camera viewfinder became less visible than the failing
@@ -17,14 +23,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Text } from '@/components/ui/Text';
 import { useColors } from '@/theme/ThemeContext';
 import { Radii, Spacing } from '@/theme/spacing';
+import type { CaptureAngle } from '../../../modules/vela-face-tracker/src/types';
 
 export interface CheckIndicatorsProps {
   distanceOk: boolean;
   lightOk: boolean;
   /** Yaw, pitch, roll vs camera (native). */
   alignmentOk: boolean;
-  /** Blend-shape neutrality (native). */
+  /** Blend-shape neutrality (native). Hidden on turn angles. */
   expressionOk: boolean;
+  /** Current capture angle — determines whether the Calm pill is shown. */
+  angle?: CaptureAngle;
 }
 
 interface PillProps {
@@ -68,13 +77,14 @@ function Pill({ label, ok }: PillProps) {
   );
 }
 
-export function CheckIndicators({ distanceOk, lightOk, alignmentOk, expressionOk }: CheckIndicatorsProps) {
+export function CheckIndicators({ distanceOk, lightOk, alignmentOk, expressionOk, angle }: CheckIndicatorsProps) {
+  const showCalm = angle !== 'left_turn' && angle !== 'right_turn';
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
       <Pill label="Distance" ok={distanceOk} />
       <Pill label="Light" ok={lightOk} />
       <Pill label="Pose" ok={alignmentOk} />
-      <Pill label="Calm" ok={expressionOk} />
+      {showCalm ? <Pill label="Calm" ok={expressionOk} /> : null}
     </View>
   );
 }

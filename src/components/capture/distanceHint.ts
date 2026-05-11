@@ -67,7 +67,8 @@ export function scannerInstruction(angle: CaptureAngle, state: FaceTrackingState
     !!state.alignment?.rollOk,
   );
   if (pose) return pose;
-  if (!state.isNeutral) return neutralHintText(false);
+  // Neutral expression is only required for the front angle (mirrors the native gate).
+  if (angle === 'front' && !state.isNeutral) return neutralHintText(false);
   const hold = state.readyHoldProgress ?? 0;
   if (!state.isReady && hold > 0 && hold < 1) return 'Hold steady for a moment';
   return '';

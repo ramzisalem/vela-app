@@ -335,7 +335,12 @@ public final class FaceTrackingSession: NSObject, ARSessionDelegate {
         }
         let lightOk = lux >= minimumLightIntensity
         let alignmentOk = yawOk && pitchOk && rollOk && distanceHint == "in_range"
-        let isReadyNow = alignmentOk && lightOk && isNeutral
+        // Neutral expression is only required for the front angle. Asking the
+        // user to maintain a perfectly neutral expression while also turning
+        // their head 30–80° is unreliable; relaxing this for turn angles means
+        // a subtle grimace from the effort of turning won't block capture.
+        let needsNeutral = currentAngle == "front"
+        let isReadyNow = alignmentOk && lightOk && (!needsNeutral || isNeutral)
 
         // Debounce: must hold ready for >= 0.5s.
         var debouncedReady = false

@@ -1,9 +1,13 @@
 /**
- * Capture screen (file 05).
+ * Capture screen (file 05 — redesigned).
  *
  * Three-angle scan (front → left_turn → right_turn). Native ARKit module
- * emits real-time tracking state; the screen renders alignment overlay,
- * check indicators, shutter ring, and per-angle progress.
+ * emits real-time tracking state; the screen renders:
+ *
+ *  • Full-bleed camera view
+ *  • AlignmentOverlay (SVG oval + corner brackets + progress arc + sweep)
+ *  • Top gradient shell: X cancel · "N of 3" counter · title · pills · instruction
+ *  • Bottom gradient shell: connected step indicator · shutter button · retake
  *
  * Recovery UX (file 05 SPEC_REVIEW_3):
  *   - Per-angle retake (max 2 retakes per session).
@@ -15,14 +19,22 @@ import {
   AccessibilityInfo,
   BackHandler,
   InteractionManager,
+  Pressable,
   StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { Body, Caption, Headline } from '@/components/ui/Text';
-import { Button } from '@/components/ui/Button';
 import { useColors } from '@/theme/ThemeContext';
 import { Spacing } from '@/theme/spacing';
 import {
@@ -48,7 +60,7 @@ import { toast } from '@/components/feedback/toastService';
 const ANGLES: ReadonlyArray<CaptureAngle> = ['front', 'left_turn', 'right_turn'];
 const MAX_RETAKES_PER_SESSION = 2;
 
-/** Let native preview + RN layout settle before AR emits (reduces sparse / missed first frames after mount). */
+/** Let native preview + RN layout settle before AR emits. */
 function awaitLayoutAndInteractions(): Promise<void> {
   return new Promise<void>((resolve) => {
     InteractionManager.runAfterInteractions(() => {
@@ -60,36 +72,64 @@ function awaitLayoutAndInteractions(): Promise<void> {
 }
 
 const ANGLE_TITLE: Record<CaptureAngle, string> = {
-  front: 'Front',
-  left_turn: 'Left turn',
-  right_turn: 'Right turn',
+  front:      'Face Forward',
+  left_turn:  'Turn Left',
+  right_turn: 'Turn Right',
 };
 
 const ANGLE_SUBTITLE: Record<CaptureAngle, string> = {
-  front: "Arm's length, eyes toward the camera",
-  left_turn: 'Ease your head until the oval steadies',
+  front:      "Arm's length, eyes toward the camera",
+  left_turn:  'Ease your head until the oval steadies',
   right_turn: 'Ease your head until the oval steadies',
 };
 
+// ─── Animated instruction pill ──────────────────────────────────────────────
+function InstructionPill({ text }: { text: string }) {
+  const opacity    = useSharedValue(0);
+  const translateY = useSharedValue(6);
+
+  useEffect(() => {
+    opacity.value    = withTiming(1, { duration: 200, easing: Easing.out(Easing.cubic) });
+    translateY.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [opacity, translateY]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity:   opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.instructionWrap, style]}>
+      <Body
+        tone="inverse"
+        style={{ textAlign: 'center', fontSize: 13, opacity: 0.88 }}
+        accessibilityLiveRegion="polite"
+      >
+        {text}
+      </Body>
+    </Animated.View>
+  );
+}
+
+// ─── Main screen ────────────────────────────────────────────────────────────
 export default function CaptureScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const colors = useColors();
+  const router        = useRouter();
+  const insets        = useSafeAreaInsets();
+  const colors        = useColors();
   const { isBaseline } = useLocalSearchParams<{ isBaseline?: string }>();
-  const profile = useProfileStore((s) => s.profile);
+  const profile       = useProfileStore((s) => s.profile);
   const completeBaseline = useAppState((s) => s.completeBaseline);
-  const addSession = useScanStore((s) => s.addSession);
+  const addSession    = useScanStore((s) => s.addSession);
 
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [angleIndex, setAngleIndex] = useState(0);
-  const [captures, setCaptures] = useState<Partial<Record<CaptureAngle, CaptureResult>>>({});
+  const [angleIndex, setAngleIndex]     = useState(0);
+  const [captures, setCaptures]         = useState<Partial<Record<CaptureAngle, CaptureResult>>>({});
   const [trackingState, setTrackingState] = useState<FaceTrackingState | null>(null);
-  const [retakeCount, setRetakeCount] = useState(0);
+  const [retakeCount, setRetakeCount]   = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const stoppedRef = useRef(false);
-  const lastHoldProgressRef = useRef(0);
+  const stoppedRef                      = useRef(false);
+  const lastHoldProgressRef             = useRef(0);
 
-  /** Baseline opens capture with `replace` — no stack to `back()`; weekly scans exit to home. */
   const exitCapture = useCallback(() => {
     if (isBaseline === 'true') {
       router.replace('/(onboarding)/permissions');
@@ -99,7 +139,7 @@ export default function CaptureScreen() {
   }, [router, isBaseline]);
 
   const currentAngle = ANGLES[angleIndex] ?? 'front';
-  const captured = ANGLES.filter((a) => captures[a]);
+  const captured     = ANGLES.filter((a) => captures[a]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -109,22 +149,17 @@ export default function CaptureScreen() {
     return () => sub.remove();
   }, [exitCapture]);
 
-  // Reduce Motion (file 28).
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
-    const sub = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReduceMotion,
-    );
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => sub.remove();
   }, []);
 
-  // Drop stale metrics immediately when the scan step changes (native emits on its own cadence).
   useEffect(() => {
     setTrackingState(null);
   }, [currentAngle]);
 
-  // Native session lifecycle (cancel-safe: avoids orphan listeners / stale sessions on Strict Mode or fast remounts).
+  // Native session lifecycle
   useEffect(() => {
     let cancelled = false;
     const subRef = { current: null as { remove: () => void } | null };
@@ -146,7 +181,6 @@ export default function CaptureScreen() {
       }
       if (cancelled) return;
       VelaFaceTracker.configure({ angle: currentAngle });
-      // Subscribe **before** `startSession`: otherwise Swift can emit frames while no JS listener exists.
       const sub = VelaFaceTracker.addStateListener(setTrackingState);
       subRef.current = sub;
       await awaitLayoutAndInteractions();
@@ -168,9 +202,7 @@ export default function CaptureScreen() {
       cancelled = true;
       subRef.current?.remove();
       subRef.current = null;
-      if (!stoppedRef.current) {
-        VelaFaceTracker.stopSession();
-      }
+      if (!stoppedRef.current) VelaFaceTracker.stopSession();
     };
   }, [currentAngle]);
 
@@ -186,16 +218,13 @@ export default function CaptureScreen() {
     if (isProcessing) return;
     setIsProcessing(true);
 
-    // Phase 1: native capture. A failure here genuinely means "redo this frame."
+    // Phase 1: native frame capture — failure here means genuinely bad frame → redo.
     let result: CaptureResult;
     try {
       result = await VelaFaceTracker.captureFrame();
     } catch (e) {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.warn('[capture] captureFrame failed:', e);
-      }
-      toast.warning('That scan needs a quick redo. Try once more when you’re ready.');
+      if (__DEV__) console.warn('[capture] captureFrame failed:', e);
+      toast.warning("That scan needs a quick redo. Try once more when you're ready.");
       setIsProcessing(false);
       return;
     }
@@ -208,22 +237,17 @@ export default function CaptureScreen() {
       return;
     }
 
-    // Phase 2: all three angles done — stop the AR session and run scoring.
-    // Scoring failures should NOT trigger "redo" — the captures are good. We log
-    // for dev and surface a more accurate message.
+    // Phase 2: all angles done — stop AR and score.
     stoppedRef.current = true;
     VelaFaceTracker.stopSession();
     try {
       await finishSession({ ...captures, [currentAngle]: result });
     } catch (e) {
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.error('[capture] finishSession failed:', e);
-      }
+      if (__DEV__) console.error('[capture] finishSession failed:', e);
       toast.error(
         __DEV__
           ? `Could not process scan: ${(e as Error).message ?? 'unknown'}`
-          : 'We couldn’t process that scan. Please try again.',
+          : "We couldn't process that scan. Please try again.",
       );
       exitCapture();
     } finally {
@@ -245,16 +269,10 @@ export default function CaptureScreen() {
   }, [retakeCount, currentAngle]);
 
   async function finishSession(allCaptures: Partial<Record<CaptureAngle, CaptureResult>>) {
-    // Baseline scans run BEFORE post-paywall signup (file 08 + 07), so the
-    // profile store is intentionally empty until the user authenticates. Compose
-    // a draft profile from the onboarding answers in that case and stash it in
-    // profileStore so the scoring engine has what it needs. `draftUserId` is
-    // stable across retries and rewritten to the real Supabase user id by
-    // `completePostPaywallSignup` after sign-up.
     let effectiveProfile = profile;
     if (!effectiveProfile) {
       const onboarding = useOnboardingStore.getState();
-      const draftId = onboarding.ensureDraftUserId();
+      const draftId    = onboarding.ensureDraftUserId();
       effectiveProfile = onboarding.composeProfile(draftId, undefined, {
         omitDeferredAnswers: true,
       });
@@ -265,10 +283,10 @@ export default function CaptureScreen() {
       ([angle, capture]) => ({ angle, capture }),
     );
     const isBaselineScan = isBaseline === 'true';
-    const prior = useScanStore.getState().sessions;
-    const maxWeek = prior.reduce((m, s) => Math.max(m, s.weekNumber ?? 0), 0);
-    const weekNumber = isBaselineScan ? 1 : Math.max(1, maxWeek) + 1;
-    const session = await processCaptureSession({
+    const prior          = useScanStore.getState().sessions;
+    const maxWeek        = prior.reduce((m, s) => Math.max(m, s.weekNumber ?? 0), 0);
+    const weekNumber     = isBaselineScan ? 1 : Math.max(1, maxWeek) + 1;
+    const session        = await processCaptureSession({
       userId: effectiveProfile.id,
       weekNumber,
       isBaseline: isBaselineScan,
@@ -280,60 +298,106 @@ export default function CaptureScreen() {
     router.replace('/(capture)/processing');
   }
 
-  const hasFace = !!trackingState?.isFaceDetected;
-  const distanceOk = hasFace && trackingState?.distanceHint === 'in_range';
-  const lightOk = !!trackingState?.isLightOk;
-  const alignmentOk =
+  // ── Derived check states ──────────────────────────────────────────────────
+  const hasFace      = !!trackingState?.isFaceDetected;
+  const distanceOk   = hasFace && trackingState?.distanceHint === 'in_range';
+  const lightOk      = !!trackingState?.isLightOk;
+  const alignmentOk  =
     hasFace &&
     !!trackingState?.alignment.yawOk &&
     !!trackingState?.alignment.pitchOk &&
     !!trackingState?.alignment.rollOk;
   const expressionOk = hasFace && !!trackingState?.isNeutral;
   const holdProgress = trackingState?.readyHoldProgress ?? 0;
-
-  const instruction = scannerInstruction(currentAngle, trackingState);
+  const instruction  = scannerInstruction(currentAngle, trackingState);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background.camera }]}>
-      {/* key remounts the native Expo view each angle so ARKit view binding stays in sync after stop/start */}
+
+      {/* Camera view — full bleed */}
       <VelaFaceTrackerView key={currentAngle} style={StyleSheet.absoluteFill} />
 
+      {/* Alignment overlay — SVG face guide */}
       <AlignmentOverlay
-        isReady={!!trackingState?.isReady}
+        isReady={!!trackingState?.isReady && !isProcessing}
         hasFace={hasFace}
         holdProgress={holdProgress}
         reduceMotion={reduceMotion}
       />
 
-      <View style={[styles.topBar, { paddingTop: insets.top + Spacing.sm }]}>
-        <View style={{ marginBottom: Spacing.sm }}>
-          <Headline tone="inverse" style={{ textAlign: 'center' }}>
-            {ANGLE_TITLE[currentAngle]}
-          </Headline>
-          <Caption tone="inverse" style={{ textAlign: 'center', marginTop: Spacing.xs, opacity: 0.88 }}>
-            {ANGLE_SUBTITLE[currentAngle]}
+      {/* ── TOP GRADIENT SHELL ── */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.80)', 'rgba(0,0,0,0.42)', 'transparent']}
+        style={[styles.topGradient, { height: insets.top + 220 }]}
+        pointerEvents="none"
+      />
+
+      <View style={[styles.topBar, { paddingTop: insets.top + Spacing.xs }]}>
+
+        {/* Nav row: ✕ cancel · "N of 3" counter */}
+        <View style={styles.navRow}>
+          <Pressable
+            onPress={exitCapture}
+            style={styles.cancelBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel scan"
+          >
+            <Ionicons name="close" size={20} color="rgba(255,255,255,0.88)" />
+          </Pressable>
+
+          <Caption style={styles.stepCounter}>
+            {angleIndex + 1} of {ANGLES.length}
           </Caption>
+
+          {/* Balance spacer */}
+          <View style={styles.navSpacer} />
         </View>
+
+        {/* Angle title + subtitle */}
+        <Headline
+          tone="inverse"
+          style={styles.angleTitle}
+        >
+          {ANGLE_TITLE[currentAngle]}
+        </Headline>
+        <Caption
+          tone="inverse"
+          style={styles.angleSubtitle}
+        >
+          {ANGLE_SUBTITLE[currentAngle]}
+        </Caption>
+
+        {/* Check pills */}
         <CheckIndicators
           distanceOk={distanceOk}
           lightOk={lightOk}
           alignmentOk={alignmentOk}
           expressionOk={expressionOk}
+          angle={currentAngle}
         />
+
+        {/* Coaching instruction — fades in on key change */}
         {instruction ? (
-          <Body
-            tone="inverse"
-            style={{ textAlign: 'center', marginTop: Spacing.sm, maxWidth: 320, alignSelf: 'center' }}
-            accessibilityLiveRegion="polite"
-          >
-            {instruction}
-          </Body>
+          <InstructionPill key={instruction} text={instruction} />
         ) : null}
+
       </View>
 
-      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
+      {/* ── BOTTOM GRADIENT SHELL ── */}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.50)', 'rgba(0,0,0,0.82)']}
+        style={styles.bottomGradient}
+        pointerEvents="none"
+      />
+
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.xl) }]}>
+
+        {/* Connected step indicator */}
         <AngleProgress current={currentAngle} captured={captured} />
-        <View style={{ alignItems: 'center', marginTop: Spacing.lg }}>
+
+        {/* Shutter button */}
+        <View style={styles.shutterRow}>
           <ShutterButton
             isReady={!!trackingState?.isReady && !isProcessing}
             holdProgress={holdProgress}
@@ -341,41 +405,122 @@ export default function CaptureScreen() {
             reduceMotion={reduceMotion}
           />
         </View>
+
+        {/* Retake / placeholder row so layout doesn't jump */}
         {captures[currentAngle] ? (
-          <Button
-            label={`Retake ${currentAngle.replace('_', ' ')}`}
-            variant="ghost"
+          <Pressable
             onPress={onRetake}
-            style={{ alignSelf: 'center', marginTop: Spacing.base }}
-          />
-        ) : null}
+            style={styles.retakeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 16, right: 16 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Retake ${currentAngle.replace('_', ' ')} angle`}
+          >
+            <Caption style={styles.retakeLabel}>
+              Retake {currentAngle.replace('_', ' ')}
+            </Caption>
+          </Pressable>
+        ) : (
+          <View style={styles.retakePlaceholder} />
+        )}
+
       </View>
 
-      {/* Cancel: baseline enters via replace — no stack to pop; use explicit routes. */}
-      <View style={[styles.cancel, { top: insets.top + Spacing.xs }]}>
-        <Button label="Cancel" variant="ghost" onPress={exitCapture} />
-      </View>
-
-      {/* Dev-only debug overlay showing the raw face-tracker payload. */}
+      {/* Dev-only debug HUD */}
       <PoseDebugHUD state={trackingState} angle={currentAngle} />
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+
+  // ── Top shell ──────────────────────────────────────────────────────────
+  topGradient: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+  },
   topBar: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: Spacing.lg,
+    top: 0, left: 0, right: 0,
+    paddingHorizontal: Spacing.base,
+    paddingBottom: Spacing.lg,
+  },
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  cancelBtn: {
+    width: 36, height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.32)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCounter: {
+    color: 'rgba(255,255,255,0.55)',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontSize: 11,
+  },
+  navSpacer: { width: 36 }, // mirrors cancelBtn width for symmetry
+
+  angleTitle: {
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    marginBottom: Spacing.xxs,
+  },
+  angleSubtitle: {
+    textAlign: 'center',
+    opacity: 0.70,
+    marginBottom: Spacing.md,
+    fontSize: 13,
+    letterSpacing: 0.1,
+  },
+
+  instructionWrap: {
+    marginTop: Spacing.sm,
+    alignSelf: 'center',
+    maxWidth: 300,
+    paddingHorizontal: Spacing.sm,
+  },
+
+  // ── Bottom shell ───────────────────────────────────────────────────────
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    height: 320,
   },
   bottomBar: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
+    alignItems: 'center',
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.base,
   },
-  cancel: { position: 'absolute', right: Spacing.sm },
+  shutterRow: {
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.sm,
+  },
+  retakeBtn: {
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  retakeLabel: {
+    color: 'rgba(255,255,255,0.60)',
+    letterSpacing: 0.4,
+    fontSize: 13,
+  },
+  retakePlaceholder: {
+    height: 44,
+  },
 });

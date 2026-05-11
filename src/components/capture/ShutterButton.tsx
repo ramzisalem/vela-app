@@ -1,14 +1,18 @@
 /**
- * ShutterButton (file 05 + 23).
+ * ShutterButton (file 05 + 23 — redesigned).
  *
  * Auto-shutter pattern: the ring fills linearly over 500ms once `isReady`
  * is true; capture fires when the ring completes. Long-press cancels the
- * auto-fire and triggers manual capture immediately. Reduce Motion (file 28)
- * replaces the ring with text states "Hold steady…" / "Ready" and uses the
- * same 500ms delay before capture (ring callback is not used when RM is on).
- * Tap when Ready captures immediately (VoiceOver / faster path).
+ * auto-fire and triggers manual capture immediately.
  *
- * Volume-button shutter is explicitly v2 only (file 23) — not implemented.
+ * Visual improvements over v1:
+ *  • Inner circle colour cross-fades from white → copper (#C77F4A) when ready
+ *  • Soft copper glow halo expands behind the button when ready
+ *  • Outer ring cross-fades to copper when ready
+ *
+ * Reduce Motion (file 28): ring replaced with text states "Hold steady…" /
+ * "Ready". The same 500ms delay triggers auto-capture; ring callback is skipped.
+ * Tap when Ready captures immediately (VoiceOver / faster path).
  */
 import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -16,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, {
   cancelAnimation,
   Easing,
+  interpolateColor,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -34,12 +39,23 @@ export interface ShutterButtonProps {
   reduceMotion?: boolean;
 }
 
-const BUTTON = 88;
-const STROKE = 4;
+const BUTTON   = 88;
+const STROKE   = 4;
+const GLOW_R   = BUTTON + 48; // glow halo diameter
 
-export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMotion }: ShutterButtonProps) {
+export function ShutterButton({
+  isReady,
+  holdProgress = 0,
+  onCapture,
+  reduceMotion,
+}: ShutterButtonProps) {
   const colors = useColors();
-  const progress = useSharedValue(0);
+
+  // Fill-ring progress (0 → 1 as hold completes)
+  const progress   = useSharedValue(0);
+  // Cross-fade 0 = white, 1 = copper
+  const readyAnim  = useSharedValue(0);
+
   const reduceMotionAutoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearReduceMotionAutoTimer = () => {
@@ -49,6 +65,15 @@ export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMoti
     }
   };
 
+  // Cross-fade to copper when ready
+  useEffect(() => {
+    readyAnim.value = withTiming(isReady ? 1 : 0, {
+      duration: 320,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [isReady, readyAnim]);
+
+  // Fill-ring animation + auto-shutter
   useEffect(() => {
     if (reduceMotion) {
       progress.value = isReady ? 1 : Math.min(1, Math.max(0, holdProgress));
@@ -59,9 +84,7 @@ export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMoti
         1,
         { duration: AnimationDuration.shutterRing, easing: Easing.linear },
         (finished) => {
-          if (finished) {
-            runOnJS(triggerCapture)();
-          }
+          if (finished) runOnJS(triggerCapture)();
         },
       );
     } else {
@@ -78,7 +101,7 @@ export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMoti
     return () => cancelAnimation(progress);
   }, [isReady, holdProgress, reduceMotion, progress, onCapture]);
 
-  // Reduce Motion: mirror the 500ms ring completion so capture still auto-fires (animated path is skipped).
+  // Reduce Motion: mirror the 500ms ring so capture still auto-fires
   useEffect(() => {
     if (!reduceMotion || !isReady) {
       clearReduceMotionAutoTimer();
@@ -93,10 +116,39 @@ export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMoti
     return clearReduceMotionAutoTimer;
   }, [reduceMotion, isReady, onCapture]);
 
+  // ── Animated styles ────────────────────────────────────────────────────
+
+  /** Copper fill-ring — fades in + tiny scale as ring fills */
   const ringStyle = useAnimatedStyle(() => ({
     opacity: progress.value,
-    transform: [{ scale: 1 + 0.02 * progress.value }],
+    transform: [{ scale: 1 + 0.025 * progress.value }],
   }));
+
+  /** Inner circle cross-fades white → copper */
+  const innerStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      readyAnim.value,
+      [0, 1],
+      ['rgba(255,255,255,0.96)', '#C77F4A'],
+    ),
+  }));
+
+  /** Outer ring fades to copper */
+  const outerStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      readyAnim.value,
+      [0, 1],
+      ['rgba(255,255,255,0.55)', '#C77F4A'],
+    ),
+  }));
+
+  /** Copper glow halo behind the button */
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: readyAnim.value * 0.25,
+    transform: [{ scale: 0.85 + readyAnim.value * 0.15 }],
+  }));
+
+  // ── Tap handlers ───────────────────────────────────────────────────────
 
   const fireCapture = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
@@ -129,17 +181,31 @@ export function ShutterButton({ isReady, holdProgress = 0, onCapture, reduceMoti
       accessibilityHint="Tap when ready, or long-press to capture immediately"
       style={styles.container}
     >
-      <View style={[styles.outer, { borderColor: colors.text.inverse }]} />
+      {/* Glow halo — sits furthest back */}
       <Animated.View
         style={[
-          styles.ring,
-          ringStyle,
-          { borderColor: colors.accent.default },
+          styles.glow,
+          glowStyle,
+          { backgroundColor: colors.accent.default },
         ]}
       />
-      <View style={[styles.inner, { backgroundColor: colors.text.inverse }]} />
+
+      {/* Outer ring: white → copper */}
+      <Animated.View style={[styles.outer, outerStyle]} />
+
+      {/* Fill ring: copper, fades in as progress fills */}
+      <Animated.View
+        style={[styles.ring, ringStyle, { borderColor: colors.accent.default }]}
+      />
+
+      {/* Inner circle: white → copper */}
+      <Animated.View style={[styles.inner, innerStyle]} />
+
       {reduceMotion ? (
-        <Caption tone="inverse" style={{ position: 'absolute', bottom: -28 }}>
+        <Caption
+          tone="inverse"
+          style={{ position: 'absolute', bottom: -(BUTTON / 2 + 12) }}
+        >
           {isReady ? 'Ready' : 'Hold steady'}
         </Caption>
       ) : null}
@@ -155,19 +221,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: Layout.tapTarget,
   },
+  glow: {
+    position: 'absolute',
+    width: GLOW_R,
+    height: GLOW_R,
+    borderRadius: GLOW_R / 2,
+  },
   outer: {
     position: 'absolute',
     width: BUTTON,
     height: BUTTON,
     borderRadius: BUTTON / 2,
     borderWidth: STROKE,
-    opacity: 0.6,
   },
   ring: {
     position: 'absolute',
-    width: BUTTON + 8,
-    height: BUTTON + 8,
-    borderRadius: (BUTTON + 8) / 2,
+    width: BUTTON + 10,
+    height: BUTTON + 10,
+    borderRadius: (BUTTON + 10) / 2,
     borderWidth: STROKE,
   },
   inner: {
