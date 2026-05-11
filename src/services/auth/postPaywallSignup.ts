@@ -17,7 +17,9 @@ import { signInWithAppleNative, signInWithGoogleOAuth } from '@/services/auth/so
 import { identifyRevenueCatUser } from '@/services/revenuecat/init';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useProfileStore } from '@/stores/profileStore';
+import { useScanStore } from '@/stores/scanStore';
 import { useAppState } from '@/stores/appStateStore';
+import { persistScanSession } from '@/db/persistence';
 import { SyncOrchestrator } from '@/services/sync/SyncOrchestrator';
 
 export type SignupMethod = 'apple' | 'google' | 'email';
@@ -94,6 +96,25 @@ export async function completePostPaywallSignup(args: SignupArgs): Promise<Signu
   useOnboardingStore.getState().bindPersistedOnboardingToUser(userId);
   useAppState.getState().setUser({ id: userId, email });
   useAppState.getState().completeOnboarding();
+
+  // 3.5. Reconcile any baseline scans created pre-signup. Those carry the
+  // draftUserId stamped at capture time (see `capture.tsx#finishSession`);
+  // rewrite them to the real Supabase user id before the flush so the remote
+  // row ends up under the right account.
+  const draftUserId = useOnboardingStore.getState().draftUserId;
+  if (draftUserId && draftUserId !== userId) {
+    const scanState = useScanStore.getState();
+    const rewritten = scanState.sessions.map((s) =>
+      s.userId === draftUserId ? { ...s, userId } : s,
+    );
+    const touched = rewritten.filter((s, i) => s !== scanState.sessions[i]);
+    if (touched.length > 0) {
+      scanState.setSessions(rewritten);
+      // Re-persist locally so cold-start hydration by userId returns these rows.
+      await Promise.all(touched.map((s) => persistScanSession(s).catch(() => undefined)));
+    }
+    useOnboardingStore.getState().clearDraftUserId();
+  }
 
   // 4. Now flush any pending scans.
   await SyncOrchestrator.flushPending();

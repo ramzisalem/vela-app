@@ -41,6 +41,7 @@ import { scannerInstruction } from '@/components/capture/distanceHint';
 import { processCaptureSession } from '@/core/scoring/scoringEngine';
 import { useProfileStore } from '@/stores/profileStore';
 import { useScanStore } from '@/stores/scanStore';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useAppState } from '@/stores/appStateStore';
 import { toast } from '@/components/feedback/toastService';
 
@@ -217,11 +218,22 @@ export default function CaptureScreen() {
   }, [retakeCount, currentAngle]);
 
   async function finishSession(allCaptures: Partial<Record<CaptureAngle, CaptureResult>>) {
-    if (!profile) {
-      toast.error('Profile is still loading. Please retry in a moment.');
-      exitCapture();
-      return;
+    // Baseline scans run BEFORE post-paywall signup (file 08 + 07), so the
+    // profile store is intentionally empty until the user authenticates. Compose
+    // a draft profile from the onboarding answers in that case and stash it in
+    // profileStore so the scoring engine has what it needs. `draftUserId` is
+    // stable across retries and rewritten to the real Supabase user id by
+    // `completePostPaywallSignup` after sign-up.
+    let effectiveProfile = profile;
+    if (!effectiveProfile) {
+      const onboarding = useOnboardingStore.getState();
+      const draftId = onboarding.ensureDraftUserId();
+      effectiveProfile = onboarding.composeProfile(draftId, undefined, {
+        omitDeferredAnswers: true,
+      });
+      useProfileStore.getState().setProfile(effectiveProfile);
     }
+
     const angles = (Object.entries(allCaptures) as [CaptureAngle, CaptureResult][]).map(
       ([angle, capture]) => ({ angle, capture }),
     );
@@ -230,11 +242,11 @@ export default function CaptureScreen() {
     const maxWeek = prior.reduce((m, s) => Math.max(m, s.weekNumber ?? 0), 0);
     const weekNumber = isBaselineScan ? 1 : Math.max(1, maxWeek) + 1;
     const session = await processCaptureSession({
-      userId: profile.id,
+      userId: effectiveProfile.id,
       weekNumber,
       isBaseline: isBaselineScan,
       angles,
-      profile,
+      profile: effectiveProfile,
     });
     addSession(session);
     if (isBaselineScan) completeBaseline();

@@ -10,6 +10,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { v4 as uuidv4 } from 'uuid';
 import type { OnboardingQuestionPhase, QuestionId } from '@/core/onboarding/questions';
 import type { Gender, ScoringFramework, UserProfile } from '@/types';
 import { frameworkForGender } from '@/types';
@@ -36,6 +37,13 @@ interface OnboardingStore {
    * Used to ignore stale phase when another account signs in.
    */
   persistedForUserId: string | null;
+  /**
+   * Stable local UUID stamped onto baseline scans / draft profiles created before
+   * the user has signed up. Generated lazily by `ensureDraftUserId()`. After
+   * paywall signup, `completePostPaywallSignup` rewrites any local scans with
+   * this id to the real Supabase user id and clears the field.
+   */
+  draftUserId: string | null;
   startedAt?: string;
 
   setAnswer: (id: QuestionId, value: AnswerValue, source?: AnswerProvenance) => void;
@@ -43,6 +51,9 @@ interface OnboardingStore {
   setQuestionPhase: (phase: OnboardingQuestionPhase) => void;
   /** Call when the current Supabase user owns persisted onboarding answers. */
   bindPersistedOnboardingToUser: (userId: string) => void;
+  /** Returns the existing draftUserId, or generates + persists a new one. */
+  ensureDraftUserId: () => string;
+  clearDraftUserId: () => void;
   reset: () => void;
 
   /** Compose into a UserProfile-shaped object (sans id/createdAt unless preserved). */
@@ -59,6 +70,7 @@ const initialState = {
   questionPhase: 'pre_scan' as OnboardingQuestionPhase,
   answerSources: {} as Partial<Record<QuestionId, AnswerProvenance>>,
   persistedForUserId: null as string | null,
+  draftUserId: null as string | null,
   startedAt: undefined as string | undefined,
 };
 
@@ -92,6 +104,16 @@ export const useOnboardingStore = create<OnboardingStore>()(
       setQuestionPhase: (questionPhase) => set({ questionPhase }),
 
       bindPersistedOnboardingToUser: (userId) => set({ persistedForUserId: userId }),
+
+      ensureDraftUserId: () => {
+        const existing = get().draftUserId;
+        if (existing) return existing;
+        const fresh = uuidv4();
+        set({ draftUserId: fresh });
+        return fresh;
+      },
+
+      clearDraftUserId: () => set({ draftUserId: null }),
 
       reset: () => set({ ...initialState }),
 
@@ -167,6 +189,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
         questionPhase: s.questionPhase,
         answerSources: s.answerSources,
         persistedForUserId: s.persistedForUserId,
+        draftUserId: s.draftUserId,
       }),
     },
   ),
