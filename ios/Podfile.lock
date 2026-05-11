@@ -1524,6 +1524,8 @@ PODS:
     - React-Core
   - RNCMaskedView (0.3.1):
     - React-Core
+  - RNCPicker (2.7.5):
+    - React-Core
   - RNGestureHandler (2.16.2):
     - DoubleConversion
     - glog
@@ -1732,6 +1734,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
   - "RNCMaskedView (from `../node_modules/@react-native-masked-view/masked-view`)"
+  - "RNCPicker (from `../node_modules/@react-native-picker/picker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNPaywalls (from `../node_modules/react-native-purchases-ui`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
@@ -1939,6 +1942,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-async-storage/async-storage"
   RNCMaskedView:
     :path: "../node_modules/@react-native-masked-view/masked-view"
+  RNCPicker:
+    :path: "../node_modules/@react-native-picker/picker"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNPaywalls:
@@ -2058,6 +2063,7 @@ SPEC CHECKSUMS:
   RevenueCatUI: 61ddba6f94803f9b79c470ffe1e8b81d807c11ce
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNCMaskedView: de80352547bd4f0d607bf6bab363d826822bd126
+  RNCPicker: 15ad063c72ecba748be9edea62a5bdce53090aa6
   RNGestureHandler: 326e35460fb6c8c64a435d5d739bea90d7ed4e49
   RNPaywalls: fddf48266ff50d13af5c06989c79aba3ebed14fb
   RNPurchases: 6070b60f5d8f525a58905df50773f7a3252f0cfa

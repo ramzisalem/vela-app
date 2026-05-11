@@ -1,8 +1,8 @@
 name: EAS Build
 
 on:
+  # Builds are manual or tag-only — not on every push to main.
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
     inputs:
